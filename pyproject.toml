@@ -1,0 +1,43 @@
+# Repository-wide tool configuration. The installable packages live in packages/* and
+# services/*, each with its own pyproject.toml.
+
+[tool.ruff]
+line-length = 120
+target-version = "py312"
+src = ["packages/core/src", "packages/client/src", "services/api/src", "services/worker/src"]
+extend-exclude = ["dashboard", "infra", ".venv", "docs"]
+
+[tool.ruff.lint]
+select = ["E", "F", "W", "I", "B", "UP", "S", "SIM", "RUF", "N", "C4", "PIE", "T20"]
+ignore = [
+  "RUF012",  # mutable class attributes are fine for pydantic/SQLAlchemy declarations
+  "E731",    # lambda assignments in the ops registry are deliberate
+]
+
+[tool.ruff.lint.per-file-ignores]
+"**/tests/**" = ["S101", "S105", "S106", "S108", "S311", "T20", "E501"]
+"**/scripts/**" = ["T20", "S603", "S607"]
+"showcase/**" = ["T20"]
+"scripts/**" = ["T20"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["ciphercompute_core", "ciphercompute_client", "ciphercompute_api", "ciphercompute_worker"]
+
+[tool.ruff.format]
+quote-style = "double"
+
+[tool.mypy]
+python_version = "3.12"
+strict = true
+warn_unreachable = true
+pretty = true
+mypy_path = "packages/core/src:packages/client/src:services/api/src:services/worker/src"
+plugins = []
+
+[[tool.mypy.overrides]]
+module = ["tenseal", "tenseal.*"]
+ignore_missing_imports = true
+
+[[tool.mypy.overrides]]
+module = ["tests.*"]
+disallow_untyped_decorators = false
