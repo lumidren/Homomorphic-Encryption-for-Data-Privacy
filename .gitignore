@@ -1,0 +1,59 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.eggs/
+build/
+dist/
+.venv/
+venv/
+.mypy_cache/
+.ruff_cache/
+.pytest_cache/
+.hypothesis/
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/
+
+# Node / Next.js
+node_modules/
+.next/
+out/
+*.tsbuildinfo
+.eslintcache
+dashboard/coverage/
+dashboard/.lighthouseci/
+
+# Secrets & local config — never commit these
+.env
+.env.*
+!.env.example
+*.pem
+*.key
+*.p12
+*.pfx
+secrets/
+*.secret.*
+
+# Key material and ciphertexts produced by the SDK / showcase runs
+*.ctx
+*.ckks
+*.sealkey
+showcase/**/output/
+showcase/**/keys/
+
+# Infra
+.terraform/
+*.tfstate
+*.tfstate.*
+*.tfplan
+crash.log
+charts/*.tgz
+
+# Tooling / OS
+.idea/
+.vscode/
+.DS_Store
+Thumbs.db
+*.log
