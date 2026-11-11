@@ -20,6 +20,13 @@ ignore = [
 "showcase/**" = ["T20"]
 "scripts/**" = ["T20"]
 
+[tool.ruff.lint.flake8-bugbear]
+# FastAPI's dependency-injection idiom: these calls in defaults are evaluated once by design.
+extend-immutable-calls = [
+  "fastapi.Depends", "fastapi.Query", "fastapi.Header", "fastapi.Body", "fastapi.Path",
+  "ciphercompute_api.deps.require",
+]
+
 [tool.ruff.lint.isort]
 known-first-party = ["ciphercompute_core", "ciphercompute_client", "ciphercompute_api", "ciphercompute_worker"]
 
@@ -35,7 +42,7 @@ mypy_path = "packages/core/src:packages/client/src:services/api/src:services/wor
 plugins = []
 
 [[tool.mypy.overrides]]
-module = ["tenseal", "tenseal.*"]
+module = ["tenseal", "tenseal.*", "boto3", "boto3.*", "botocore", "botocore.*", "celery", "celery.*", "moto", "moto.*", "kombu", "kombu.*"]
 ignore_missing_imports = true
 
 [[tool.mypy.overrides]]
