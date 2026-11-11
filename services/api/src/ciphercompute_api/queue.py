@@ -22,7 +22,12 @@ class JobQueue(Protocol):
 class CeleryQueue:
     def __init__(self, settings: Settings) -> None:
         from celery import Celery
+        from opentelemetry.instrumentation.celery import CeleryInstrumentor
 
+        # Injects the current trace context into message headers so the worker's spans join the
+        # API request's trace (API -> queue -> worker).
+        if not CeleryInstrumentor().is_instrumented_by_opentelemetry:
+            CeleryInstrumentor().instrument()
         self._task_name = settings.celery_task_name
         self._app = Celery("ciphercompute-api", broker=settings.broker_url)
         self._app.conf.update(task_serializer="json", accept_content=["json"], broker_connection_retry_on_startup=True)

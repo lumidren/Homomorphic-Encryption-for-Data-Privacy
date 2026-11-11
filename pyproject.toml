@@ -46,5 +46,11 @@ module = ["tenseal", "tenseal.*", "boto3", "boto3.*", "botocore", "botocore.*", 
 ignore_missing_imports = true
 
 [[tool.mypy.overrides]]
+# Celery and its OpenTelemetry instrumentation ship without type information.
+module = ["ciphercompute_worker.celery_app", "ciphercompute_worker.tasks", "ciphercompute_api.queue"]
+disallow_untyped_decorators = false
+disallow_untyped_calls = false
+
+[[tool.mypy.overrides]]
 module = ["tests.*"]
 disallow_untyped_decorators = false
