@@ -25,7 +25,7 @@ if TYPE_CHECKING:
 
 MAGIC_SECRET: Final = b"CCSK"
 BUNDLE_KIND: Final = "public_key_bundle"
-SECRET_KIND: Final = "secret_key_ring"
+SECRET_KIND: Final = "secret_key_ring"  # noqa: S105 - an envelope kind label, not a credential
 _RING_ID_HEX_LEN: Final = 32
 
 
