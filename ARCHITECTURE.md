@@ -266,18 +266,61 @@ scripts/              backup / restore / release helpers
 
 Chosen so that `Σ coeff_mod_bit_sizes ≤ MaxBitCount(N, level)` from the HE Security
 Standard (the table SEAL ships in `hestdparms.h`). All primes are ≤ 60 bits as SEAL requires.
+Each `(N, level)` has two profiles: **balanced** (larger scale, more precision) and **deep**
+(smaller scale, more levels). *Headroom* = first prime − scale bits: values and every
+intermediate product or sum must stay below `2^headroom` or they wrap.
 
-| N | Level | coeff_mod_bit_sizes | Σ bits | bound | depth | scale |
-|---|---|---|---|---|---|---|
-| 8192 | 128 | 60,40,40,60 | 200 | 218 | 2 | 2^40 |
-| 8192 | 192 | 45,30,30,45 | 150 | 152 | 2 | 2^30 |
-| 8192 | 256 | 30,25,25,30 | 110 | 118 | 2 | 2^25 |
-| 16384 | 128 | 60,40×6,60 | 360 | 438 | 6 | 2^40 |
-| 16384 | 192 | 50,40×5,50 | 300 | 305 | 5 | 2^40 |
-| 16384 | 256 | 40,30×5,40 | 230 | 237 | 5 | 2^30 |
-| 32768 | 128 | 60,40×8,60 | 440 | 881 | 8 | 2^40 |
-| 32768 | 192 | 60,40×8,60 | 440 | 611 | 8 | 2^40 |
-| 32768 | 256 | 50,35×8,50 | 380 | 476 | 8 | 2^35 |
+| N | Level | Profile | coeff_mod_bit_sizes | Σ bits | bound | depth | scale | headroom |
+|---|---|---|---|---|---|---|---|---|
+| 8192 | 128 | balanced | 60,40,40,60 | 200 | 218 | 2 | 2^40 | 20 |
+| 8192 | 128 | deep | 45,30,30,30,30,45 | 210 | 218 | 4 | 2^30 | 15 |
+| 8192 | 192 | balanced | 45,30,30,45 | 150 | 152 | 2 | 2^30 | 15 |
+| 8192 | 192 | deep | 38,25,25,25,38 | 151 | 152 | 3 | 2^25 | 13 |
+| 8192 | 256 | balanced | 36,23,23,36 | 118 | 118 | 2 | 2^23 | 13 |
+| 8192 | 256 | deep | — | | 118 | | | *no viable set* |
+| 16384 | 128 | balanced | 60,40×6,60 | 360 | 438 | 6 | 2^40 | 20 |
+| 16384 | 128 | deep | 50,30×11,50 | 430 | 438 | 11 | 2^30 | 20 |
+| 16384 | 192 | balanced | 55,35×5,55 | 285 | 305 | 5 | 2^35 | 20 |
+| 16384 | 192 | deep | 45,30×7,45 | 300 | 305 | 7 | 2^30 | 15 |
+| 16384 | 256 | balanced | 43,29×5,43 | 231 | 237 | 5 | 2^29 | 14 |
+| 16384 | 256 | deep | 38,26×6,38 | 232 | 237 | 6 | 2^26 | 12 |
+| 32768 | 128 | balanced | 60,40×8,60 | 440 | 881 | 8 | 2^40 | 20 |
+| 32768 | 128 | deep | 60,40×14,60 | 680 | 881 | 14 | 2^40 | 20 |
+| 32768 | 192 | balanced | 60,40×8,60 | 440 | 611 | 8 | 2^40 | 20 |
+| 32768 | 192 | deep | 50,35×14,50 | 590 | 611 | 14 | 2^35 | 15 |
+| 32768 | 256 | balanced | 50,35×8,50 | 380 | 476 | 8 | 2^35 | 15 |
+| 32768 | 256 | deep | 45,30×12,45 | 450 | 476 | 12 | 2^30 | 15 |
 
-Depth is `len − 2`. Precision bounds for each row are measured, not assumed — see
-`packages/core/src/ciphercompute_core/precision.py` and the whitepaper benchmarks.
+Depth is `len − 2`. Two rules shaped every row, and both are *measured* rather than assumed:
+
+1. **The special (last) prime is never smaller than the first prime.** RNS key switching —
+   used by every relinearisation and rotation — adds noise of roughly
+   `2^(largest prime − special prime) · N · σ`. Calibration of a (32,21,21,21,23) candidate
+   returned *negative* precision bits (errors larger than the values); `CKKSParams` now rejects
+   any chain whose special prime is smaller than another prime.
+2. **Usable precision ≈ scale_bits − log₂N − 2 when fresh**, dropping 2–5 bits per level. That
+   is why the 256-bit rows at N=8192 are cramped (118 bits cannot buy both precision and depth),
+   why there is no deep 256-bit set at N=8192 at all, and why the advisor can be asked for a
+   minimum precision (`advise(..., min_precision_bits=12)`) and will move to N=16384 instead.
+
+### 8.1 Depth cost of each operation
+
+| Operation | Levels | Notes |
+|---|---|---|
+| `vector_add`, `sum` | 0 | additions and rotations only |
+| `scalar_multiply`, `elementwise_multiply`, `dot_product`, `mean`, `weighted_average`, `linear_regression`, `matvec_multiply` | 1 | one multiplication + rescale |
+| `variance` | 2 | `E[x²] − E[x]²`, both branches aligned at two levels |
+| `logistic_regression`, degree 3 | 3 | 1 for the logit + 2 for `polyval` |
+| `logistic_regression`, degree 5 | 4 | 1 for the logit + 3 for `polyval` (`⌊log₂ d⌋ + 1`) |
+
+Consequence worth knowing: encrypted logistic-regression inference does **not** fit the
+balanced N=8192 sets (2 levels). `budget.plan()` refuses it with the exact set to use instead
+(N=8192 *deep*, 4 levels, at 128-bit) — the showcase runs there.
+
+### 8.2 Measured precision
+
+`packages/core/src/ciphercompute_core/data/precision_table.json` holds, for every preset and
+every level, the worst normalised error measured by `scripts/calibrate_precision.py`
+(see `precision.py` for the error model). Representative values at N=8192, 128-bit, balanced:
+25 usable bits fresh, 20 after one multiplication, 18 after two. The property-based tests use
+exactly these bounds as tolerances, and the whitepaper reports the full table.
