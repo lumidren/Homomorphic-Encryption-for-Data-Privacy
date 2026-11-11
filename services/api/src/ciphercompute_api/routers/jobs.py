@@ -3,7 +3,6 @@
 from __future__ import annotations
 
 import asyncio
-import hashlib
 import json
 import time
 import uuid
@@ -17,6 +16,7 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from ciphercompute_core import CKKSParams, get_operation, plan
 from ciphercompute_core.errors import CipherComputeError
+from ciphercompute_core.manifest import manifest_hash
 
 from ..audit.service import AuditAction
 from ..db.models import Ciphertext, CiphertextStatus, Dataset, Job, JobStatus, KeyBundle, KeyBundleStatus, Project, Role
@@ -36,12 +36,6 @@ TERMINAL = {JobStatus.SUCCEEDED, JobStatus.FAILED, JobStatus.CANCELLED}
 SSE_MAX_SECONDS = 600
 
 
-def manifest_hash(
-    operation: str, args: dict[str, Any], input_fingerprints: list[str], bundle_fingerprint: str | None
-) -> str:
-    """Commitment to exactly what the client asked for; echoed with the result (TM:T-2)."""
-    body = {"operation": operation, "args": args, "inputs": input_fingerprints, "bundle": bundle_fingerprint}
-    return hashlib.sha256(json.dumps(body, sort_keys=True, separators=(",", ":")).encode("utf-8")).hexdigest()
 
 
 async def _load_inputs(
