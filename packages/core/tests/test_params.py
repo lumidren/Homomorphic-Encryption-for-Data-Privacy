@@ -33,9 +33,26 @@ def test_every_preset_is_within_standard_bounds(profile: str, params: CKKSParams
 
 
 def test_deep_profile_has_more_levels_than_balanced() -> None:
-    for degree in PolyModulusDegree:
-        for level in SecurityLevel:
-            assert DEEP_PARAMS[(degree, level)].depth > STANDARD_PARAMS[(degree, level)].depth
+    assert len(DEEP_PARAMS) == len(STANDARD_PARAMS) - 1
+    for key, deep in DEEP_PARAMS.items():
+        assert deep.depth > STANDARD_PARAMS[key].depth
+
+
+def test_no_deep_profile_at_8192_256() -> None:
+    assert (PolyModulusDegree.N_8192, SecurityLevel.BITS_256) not in DEEP_PARAMS
+    with pytest.raises(InsecureParametersError, match="no 'deep' profile exists") as excinfo:
+        standard_params(8192, 256, "deep")
+    assert excinfo.value.details["profile"] == "deep"
+    assert sum(1 for profile, _ in all_presets() if profile == "deep") == 8
+
+
+def test_special_prime_must_dominate() -> None:
+    with pytest.raises(InsecureParametersError, match="special \\(last\\) prime"):
+        CKKSParams(8192, (60, 40, 40, 50), 40)
+    with pytest.raises(InsecureParametersError, match="special \\(last\\) prime"):
+        CKKSParams(8192, (32, 21, 21, 21, 23), 21, SecurityLevel.BITS_256)
+    # equal is fine
+    assert CKKSParams(8192, (40, 40, 40, 40), 40).depth == 2
 
 
 @pytest.mark.parametrize(

@@ -127,6 +127,16 @@ class CKKSParams:
                     f"{MAX_PRIME_BITS} bits (SEAL limit); got {b}",
                     coeff_mod_bit_sizes=list(bits),
                 )
+        if bits[-1] < max(bits[:-1]):
+            # Measured, not folklore: RNS key switching (relinearisation, rotations) adds noise of
+            # about 2^(largest prime - special prime) * N * sigma. A special prime smaller than the
+            # first prime wipes out the fractional bits — see precision_table.json history.
+            raise InsecureParametersError(
+                f"the special (last) prime ({bits[-1]} bits) must be at least as large as every other "
+                f"prime ({max(bits[:-1])} bits); a smaller special prime inflates key-switching noise "
+                "by 2^(difference) and destroys precision",
+                coeff_mod_bit_sizes=list(bits),
+            )
         bound = max_coeff_modulus_bits(n, self.security_level)
         total = sum(bits)
         if total > bound:
@@ -256,11 +266,15 @@ def _next_degree(n: int) -> int | None:
 #
 # "balanced" favours precision (40-bit working primes where the budget allows);
 # "deep" trades scale for extra levels. Both are validated at import time.
-
 #
-# The first prime minus the scale is the *integer headroom*: values (including intermediate
-# products and sums) must stay below 2**headroom or they wrap. Every set below keeps at least
-# 11 bits of headroom; the balanced 128-bit sets keep 20.
+# Design rules, each backed by calibration measurements (scripts/calibrate_precision.py):
+#   * special prime == first prime, so key switching costs no fractional bits;
+#   * usable precision ~ scale_bits - log2(N) - 2 fresh, minus ~2-5 bits per level consumed;
+#   * first prime - scale is the *integer headroom*: values, intermediate products and sums must
+#     stay below 2**headroom or they wrap. Every set keeps >= 12 bits; balanced 128-bit keeps 20.
+#
+# There is deliberately no "deep" profile for (8192, 256-bit): 118 bits of modulus cannot carry
+# a third level with any usable precision (the attempt measured *negative* precision bits).
 
 _BALANCED: Final[dict[tuple[int, int], tuple[tuple[int, ...], int]]] = {
     (8192, 128): ((60, 40, 40, 60), 40),
@@ -268,7 +282,7 @@ _BALANCED: Final[dict[tuple[int, int], tuple[tuple[int, ...], int]]] = {
     (8192, 256): ((36, 23, 23, 36), 23),
     (16384, 128): ((60, 40, 40, 40, 40, 40, 40, 60), 40),
     (16384, 192): ((55, 35, 35, 35, 35, 35, 55), 35),
-    (16384, 256): ((48, 28, 28, 28, 28, 28, 48), 28),
+    (16384, 256): ((43, 29, 29, 29, 29, 29, 43), 29),
     (32768, 128): ((60,) + (40,) * 8 + (60,), 40),
     (32768, 192): ((60,) + (40,) * 8 + (60,), 40),
     (32768, 256): ((50,) + (35,) * 8 + (50,), 35),
@@ -276,11 +290,10 @@ _BALANCED: Final[dict[tuple[int, int], tuple[tuple[int, ...], int]]] = {
 
 _DEEP: Final[dict[tuple[int, int], tuple[tuple[int, ...], int]]] = {
     (8192, 128): ((45, 30, 30, 30, 30, 45), 30),
-    (8192, 192): ((40, 24, 24, 24, 40), 24),
-    (8192, 256): ((32, 21, 21, 21, 23), 21),
+    (8192, 192): ((38, 25, 25, 25, 38), 25),
     (16384, 128): ((50,) + (30,) * 11 + (50,), 30),
     (16384, 192): ((45,) + (30,) * 7 + (45,), 30),
-    (16384, 256): ((41,) + (25,) * 6 + (41,), 25),
+    (16384, 256): ((38,) + (26,) * 6 + (38,), 26),
     (32768, 128): ((60,) + (40,) * 14 + (60,), 40),
     (32768, 192): ((50,) + (35,) * 14 + (50,), 35),
     (32768, 256): ((45,) + (30,) * 12 + (45,), 30),
@@ -314,7 +327,16 @@ def standard_params(
     """
     key = (PolyModulusDegree(int(poly_modulus_degree)), SecurityLevel(int(security_level)))
     table = STANDARD_PARAMS if profile == "balanced" else DEEP_PARAMS
-    return table[key]
+    try:
+        return table[key]
+    except KeyError:
+        raise InsecureParametersError(
+            f"no '{profile}' profile exists for poly_modulus_degree={int(key[0])} at {int(key[1])}-bit "
+            "security: the coefficient-modulus budget cannot carry an extra level with usable precision",
+            poly_modulus_degree=int(key[0]),
+            security_level=int(key[1]),
+            profile=profile,
+        ) from None
 
 
 def all_presets() -> list[tuple[Profile, CKKSParams]]:
@@ -323,5 +345,6 @@ def all_presets() -> list[tuple[Profile, CKKSParams]]:
     for degree in PolyModulusDegree:
         for level in SecurityLevel:
             out.append(("balanced", STANDARD_PARAMS[(degree, level)]))
-            out.append(("deep", DEEP_PARAMS[(degree, level)]))
+            if (degree, level) in DEEP_PARAMS:
+                out.append(("deep", DEEP_PARAMS[(degree, level)]))
     return out
