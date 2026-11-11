@@ -18,15 +18,29 @@ import hashlib
 import uuid
 from dataclasses import dataclass
 from datetime import timedelta
-from typing import Any
+from typing import Any, Literal, Protocol
 
 import boto3
 from botocore.client import Config
 from botocore.exceptions import ClientError
+from pydantic import SecretStr
 
-from ..config import Settings
 from ..db.base import utcnow
 from ..errors import PayloadTooLargeError
+
+
+class StorageConfig(Protocol):
+    """The settings ObjectStore needs; satisfied by the API's and the worker's settings."""
+
+    s3_bucket: str
+    s3_region: str
+    s3_endpoint_url: str | None
+    s3_access_key_id: SecretStr | None
+    s3_secret_access_key: SecretStr | None
+    s3_sse: Literal["AES256", "aws:kms"]
+    s3_kms_key_id: str | None
+    s3_force_path_style: bool
+    presign_ttl_seconds: int
 
 
 class TenantKeyViolationError(RuntimeError):
@@ -49,7 +63,7 @@ class ObjectInfo:
 
 
 class ObjectStore:
-    def __init__(self, settings: Settings) -> None:
+    def __init__(self, settings: StorageConfig) -> None:
         self._settings = settings
         self._bucket = settings.s3_bucket
         kwargs: dict[str, Any] = {
