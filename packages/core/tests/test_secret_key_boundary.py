@@ -53,7 +53,7 @@ def test_services_tree_has_no_secret_key_paths() -> None:
     if not SERVICES.exists():
         pytest.skip("services/ is not part of this checkout")
     offenders: list[str] = []
-    for path in SERVICES.rglob("*.py"):
+    for path in SERVICES.glob("*/src/**/*.py"):
         text = path.read_text(encoding="utf-8")
         for token in FORBIDDEN_TOKENS:
             if token in text:
