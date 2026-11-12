@@ -1,0 +1,79 @@
+{{- $ctx := dict "root" . "component" "dashboard" -}}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "cc.name" . }}-dashboard
+  labels: {{- include "cc.labels" . | nindent 4 }}
+    app.kubernetes.io/component: dashboard
+spec:
+  replicas: {{ .Values.dashboard.replicas }}
+  revisionHistoryLimit: 5
+  strategy:
+    type: RollingUpdate
+    rollingUpdate: { maxUnavailable: 0, maxSurge: 1 }
+  selector:
+    matchLabels: {{- include "cc.selector" $ctx | nindent 6 }}
+  template:
+    metadata:
+      labels: {{- include "cc.selector" $ctx | nindent 8 }}
+    spec:
+      serviceAccountName: {{ include "cc.name" . }}
+      securityContext: {{- include "cc.podSecurityContext" . | nindent 8 }}
+      containers:
+        - name: dashboard
+          image: {{ include "cc.image" (dict "root" . "image" .Values.image.dashboard) }}
+          imagePullPolicy: {{ .Values.global.imagePullPolicy }}
+          env:
+            - { name: CC_API_URL, value: {{ printf "http://%s-api" (include "cc.name" .) | quote }} }
+          ports:
+            - { name: http, containerPort: {{ .Values.dashboard.port }} }
+          securityContext: {{- include "cc.containerSecurityContext" . | nindent 12 }}
+          resources: {{- toYaml .Values.dashboard.resources | nindent 12 }}
+          livenessProbe:
+            httpGet: { path: /login, port: http }
+            periodSeconds: 15
+          readinessProbe:
+            httpGet: { path: /login, port: http }
+            periodSeconds: 5
+          volumeMounts:
+            - { name: tmp, mountPath: /tmp }
+            - { name: next-cache, mountPath: /app/.next/cache }
+      volumes:
+        - { name: tmp, emptyDir: {} }
+        - { name: next-cache, emptyDir: { sizeLimit: 256Mi } }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "cc.name" . }}-dashboard
+  labels: {{- include "cc.labels" . | nindent 4 }}
+    app.kubernetes.io/component: dashboard
+spec:
+  selector: {{- include "cc.selector" $ctx | nindent 4 }}
+  ports:
+    - { name: http, port: 80, targetPort: http }
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: {{ include "cc.name" . }}-dashboard
+  labels: {{- include "cc.labels" . | nindent 4 }}
+spec:
+  scaleTargetRef: { apiVersion: apps/v1, kind: Deployment, name: {{ include "cc.name" . }}-dashboard }
+  minReplicas: {{ .Values.dashboard.hpa.minReplicas }}
+  maxReplicas: {{ .Values.dashboard.hpa.maxReplicas }}
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target: { type: Utilization, averageUtilization: {{ .Values.dashboard.hpa.targetCPUUtilization }} }
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ include "cc.name" . }}-dashboard
+  labels: {{- include "cc.labels" . | nindent 4 }}
+spec:
+  minAvailable: {{ .Values.dashboard.pdb.minAvailable }}
+  selector:
+    matchLabels: {{- include "cc.selector" $ctx | nindent 6 }}

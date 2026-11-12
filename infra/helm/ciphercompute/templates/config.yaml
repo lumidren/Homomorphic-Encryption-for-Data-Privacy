@@ -1,0 +1,43 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ include "cc.name" . }}-config
+  labels: {{- include "cc.labels" . | nindent 4 }}
+data:
+  {{- range $key, $value := .Values.config }}
+  {{ $key }}: {{ $value | quote }}
+  {{- end }}
+  CC_CORS_ORIGINS: {{ printf "https://%s" .Values.ingress.dashboardHost | quote }}
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ include "cc.name" . }}
+  labels: {{- include "cc.labels" . | nindent 4 }}
+  {{- with .Values.serviceAccount.annotations }}
+  annotations: {{- toYaml . | nindent 4 }}
+  {{- end }}
+automountServiceAccountToken: false
+{{- if .Values.externalSecrets.enabled }}
+---
+apiVersion: external-secrets.io/v1
+kind: ExternalSecret
+metadata:
+  name: {{ include "cc.name" . }}-secrets
+  labels: {{- include "cc.labels" . | nindent 4 }}
+spec:
+  refreshInterval: {{ .Values.externalSecrets.refreshInterval }}
+  secretStoreRef:
+    kind: {{ .Values.externalSecrets.secretStoreRef.kind }}
+    name: {{ .Values.externalSecrets.secretStoreRef.name }}
+  target:
+    name: {{ include "cc.name" . }}-secrets
+    creationPolicy: Owner
+  data:
+    {{- range .Values.externalSecrets.keys }}
+    - secretKey: {{ . }}
+      remoteRef:
+        key: {{ $.Values.externalSecrets.remoteKey }}
+        property: {{ . }}
+    {{- end }}
+{{- end }}

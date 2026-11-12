@@ -1,0 +1,13 @@
+# Production overrides. CI replaces the tags with immutable digests at deploy time:
+#   helm upgrade --install cc infra/helm/ciphercompute -f values-prod.yaml \
+#     --set image.python.tag=sha-<commit> --set image.dashboard.tag=sha-<commit> --atomic --wait
+serviceAccount:
+  annotations:
+    eks.amazonaws.com/role-arn: arn:aws:iam::ACCOUNT_ID:role/ciphercompute-prod-app
+ingress:
+  apiHost: api.ciphercompute.example.com
+  dashboardHost: app.ciphercompute.example.com
+api:
+  hpa: { minReplicas: 3, maxReplicas: 20 }
+worker:
+  hpa: { minReplicas: 4, maxReplicas: 60 }

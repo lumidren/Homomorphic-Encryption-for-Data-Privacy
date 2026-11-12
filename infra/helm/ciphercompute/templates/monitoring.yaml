@@ -1,0 +1,30 @@
+{{- if .Values.monitoring.serviceMonitor }}
+apiVersion: monitoring.coreos.com/v1
+kind: ServiceMonitor
+metadata:
+  name: {{ include "cc.name" . }}
+  labels: {{- include "cc.labels" . | nindent 4 }}
+spec:
+  selector:
+    matchLabels:
+      app.kubernetes.io/name: ciphercompute
+      app.kubernetes.io/instance: {{ .Release.Name }}
+  endpoints:
+    - port: http
+      path: /metrics
+      interval: 15s
+    - port: metrics
+      path: /metrics
+      interval: 15s
+{{- end }}
+{{- if .Values.monitoring.prometheusRule }}
+---
+apiVersion: monitoring.coreos.com/v1
+kind: PrometheusRule
+metadata:
+  name: {{ include "cc.name" . }}
+  labels: {{- include "cc.labels" . | nindent 4 }}
+spec:
+  {{- $rules := .Files.Get "files/alerts.yml" | fromYaml }}
+  {{- toYaml $rules | nindent 2 }}
+{{- end }}

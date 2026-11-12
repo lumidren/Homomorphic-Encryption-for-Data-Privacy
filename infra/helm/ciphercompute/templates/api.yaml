@@ -1,0 +1,103 @@
+{{- $ctx := dict "root" . "component" "api" -}}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "cc.name" . }}-api
+  labels: {{- include "cc.labels" . | nindent 4 }}
+    app.kubernetes.io/component: api
+spec:
+  replicas: {{ .Values.api.replicas }}
+  revisionHistoryLimit: 5
+  strategy:
+    # Zero-downtime rolling deploys: never drop below the desired count.
+    type: RollingUpdate
+    rollingUpdate: { maxUnavailable: 0, maxSurge: 1 }
+  selector:
+    matchLabels: {{- include "cc.selector" $ctx | nindent 6 }}
+  template:
+    metadata:
+      labels: {{- include "cc.selector" $ctx | nindent 8 }}
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/config.yaml") . | sha256sum }}
+    spec:
+      serviceAccountName: {{ include "cc.name" . }}
+      securityContext: {{- include "cc.podSecurityContext" . | nindent 8 }}
+      terminationGracePeriodSeconds: 45
+      topologySpreadConstraints:
+        - maxSkew: 1
+          topologyKey: topology.kubernetes.io/zone
+          whenUnsatisfiable: ScheduleAnyway
+          labelSelector:
+            matchLabels: {{- include "cc.selector" $ctx | nindent 14 }}
+      containers:
+        - name: api
+          image: {{ include "cc.image" (dict "root" . "image" .Values.image.python) }}
+          imagePullPolicy: {{ .Values.global.imagePullPolicy }}
+          env:
+            - { name: SERVICE, value: api }
+            - { name: WEB_CONCURRENCY, value: {{ .Values.api.webConcurrency | quote }} }
+            - { name: FORWARDED_ALLOW_IPS, value: "*" }
+          envFrom: {{- include "cc.envFrom" . | nindent 12 }}
+          ports:
+            - { name: http, containerPort: {{ .Values.api.port }} }
+          securityContext: {{- include "cc.containerSecurityContext" . | nindent 12 }}
+          resources: {{- toYaml .Values.api.resources | nindent 12 }}
+          startupProbe:
+            httpGet: { path: /healthz, port: http }
+            periodSeconds: 2
+            failureThreshold: 30
+          livenessProbe:
+            httpGet: { path: /healthz, port: http }
+            periodSeconds: 10
+            failureThreshold: 3
+          readinessProbe:
+            httpGet: { path: /readyz, port: http }
+            periodSeconds: 5
+            failureThreshold: 2
+          lifecycle:
+            # Let the load balancer observe NotReady before the process starts draining.
+            preStop:
+              sleep: { seconds: 10 }
+          volumeMounts:
+            - { name: tmp, mountPath: /tmp }
+      volumes:
+        - { name: tmp, emptyDir: { sizeLimit: 2Gi } }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "cc.name" . }}-api
+  labels: {{- include "cc.labels" . | nindent 4 }}
+    app.kubernetes.io/component: api
+spec:
+  selector: {{- include "cc.selector" $ctx | nindent 4 }}
+  ports:
+    - { name: http, port: 80, targetPort: http }
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: {{ include "cc.name" . }}-api
+  labels: {{- include "cc.labels" . | nindent 4 }}
+spec:
+  scaleTargetRef: { apiVersion: apps/v1, kind: Deployment, name: {{ include "cc.name" . }}-api }
+  minReplicas: {{ .Values.api.hpa.minReplicas }}
+  maxReplicas: {{ .Values.api.hpa.maxReplicas }}
+  metrics:
+    - type: Resource
+      resource:
+        name: cpu
+        target: { type: Utilization, averageUtilization: {{ .Values.api.hpa.targetCPUUtilization }} }
+  behavior:
+    scaleDown:
+      stabilizationWindowSeconds: 300
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ include "cc.name" . }}-api
+  labels: {{- include "cc.labels" . | nindent 4 }}
+spec:
+  minAvailable: {{ .Values.api.pdb.minAvailable }}
+  selector:
+    matchLabels: {{- include "cc.selector" $ctx | nindent 6 }}

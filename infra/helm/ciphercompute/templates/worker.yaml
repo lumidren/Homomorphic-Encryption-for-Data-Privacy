@@ -1,0 +1,99 @@
+{{- $ctx := dict "root" . "component" "worker" -}}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "cc.name" . }}-worker
+  labels: {{- include "cc.labels" . | nindent 4 }}
+    app.kubernetes.io/component: worker
+spec:
+  replicas: {{ .Values.worker.replicas }}
+  revisionHistoryLimit: 5
+  strategy:
+    type: RollingUpdate
+    rollingUpdate: { maxUnavailable: 0, maxSurge: 2 }
+  selector:
+    matchLabels: {{- include "cc.selector" $ctx | nindent 6 }}
+  template:
+    metadata:
+      labels: {{- include "cc.selector" $ctx | nindent 8 }}
+      annotations:
+        checksum/config: {{ include (print $.Template.BasePath "/config.yaml") . | sha256sum }}
+    spec:
+      serviceAccountName: {{ include "cc.name" . }}
+      securityContext: {{- include "cc.podSecurityContext" . | nindent 8 }}
+      # Celery warm shutdown finishes the current job (hard limit 660 s) before exiting;
+      # an interrupted job is redelivered (acks_late) and reclaimed by another worker.
+      terminationGracePeriodSeconds: {{ .Values.worker.terminationGracePeriodSeconds }}
+      containers:
+        - name: worker
+          image: {{ include "cc.image" (dict "root" . "image" .Values.image.python) }}
+          imagePullPolicy: {{ .Values.global.imagePullPolicy }}
+          env:
+            - { name: SERVICE, value: worker }
+            - { name: CC_METRICS_PORT, value: {{ .Values.worker.metricsPort | quote }} }
+          envFrom: {{- include "cc.envFrom" . | nindent 12 }}
+          ports:
+            - { name: metrics, containerPort: {{ .Values.worker.metricsPort }} }
+          securityContext: {{- include "cc.containerSecurityContext" . | nindent 12 }}
+          resources: {{- toYaml .Values.worker.resources | nindent 12 }}
+          livenessProbe:
+            httpGet: { path: /metrics, port: metrics }
+            initialDelaySeconds: 20
+            periodSeconds: 15
+          readinessProbe:
+            httpGet: { path: /metrics, port: metrics }
+            periodSeconds: 10
+          volumeMounts:
+            - { name: tmp, mountPath: /tmp }
+      volumes:
+        - { name: tmp, emptyDir: { sizeLimit: 4Gi } }
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "cc.name" . }}-worker-metrics
+  labels: {{- include "cc.labels" . | nindent 4 }}
+    app.kubernetes.io/component: worker
+spec:
+  clusterIP: None
+  selector: {{- include "cc.selector" $ctx | nindent 4 }}
+  ports:
+    - { name: metrics, port: {{ .Values.worker.metricsPort }}, targetPort: metrics }
+---
+apiVersion: autoscaling/v2
+kind: HorizontalPodAutoscaler
+metadata:
+  name: {{ include "cc.name" . }}-worker
+  labels: {{- include "cc.labels" . | nindent 4 }}
+spec:
+  scaleTargetRef: { apiVersion: apps/v1, kind: Deployment, name: {{ include "cc.name" . }}-worker }
+  minReplicas: {{ .Values.worker.hpa.minReplicas }}
+  maxReplicas: {{ .Values.worker.hpa.maxReplicas }}
+  metrics:
+    # Queue-driven: add a worker for every N queued jobs (Prometheus Adapter external metric).
+    - type: External
+      external:
+        metric:
+          name: {{ .Values.worker.hpa.externalMetricName }}
+        target:
+          type: AverageValue
+          averageValue: {{ .Values.worker.hpa.queueDepthPerWorker | quote }}
+    - type: Resource
+      resource:
+        name: cpu
+        target: { type: Utilization, averageUtilization: 80 }
+  behavior:
+    scaleUp:
+      policies: [{ type: Pods, value: 4, periodSeconds: 60 }]
+    scaleDown:
+      stabilizationWindowSeconds: 600
+---
+apiVersion: policy/v1
+kind: PodDisruptionBudget
+metadata:
+  name: {{ include "cc.name" . }}-worker
+  labels: {{- include "cc.labels" . | nindent 4 }}
+spec:
+  minAvailable: {{ .Values.worker.pdb.minAvailable }}
+  selector:
+    matchLabels: {{- include "cc.selector" $ctx | nindent 6 }}

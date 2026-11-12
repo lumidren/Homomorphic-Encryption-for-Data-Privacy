@@ -1,0 +1,13 @@
+# Staging overrides (deployed automatically on every push to main).
+#   helm upgrade --install cc infra/helm/ciphercompute -f values-staging.yaml \
+#     --set image.python.tag=sha-<commit> --set image.dashboard.tag=sha-<commit> --atomic --wait
+serviceAccount:
+  annotations:
+    eks.amazonaws.com/role-arn: arn:aws:iam::ACCOUNT_ID:role/ciphercompute-staging-app
+ingress:
+  apiHost: api.staging.ciphercompute.example.com
+  dashboardHost: app.staging.ciphercompute.example.com
+api:
+  hpa: { minReplicas: 2, maxReplicas: 4 }
+worker:
+  hpa: { minReplicas: 1, maxReplicas: 6 }

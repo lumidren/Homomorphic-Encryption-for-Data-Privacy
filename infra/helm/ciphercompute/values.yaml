@@ -1,0 +1,121 @@
+# Default values. Production overrides live in values-prod.yaml (images by digest, hostnames).
+
+global:
+  imageRegistry: ghcr.io/lumidren
+  imagePullPolicy: IfNotPresent
+
+image:
+  python:
+    repository: ciphercompute-python
+    tag: "0.1.0"
+  dashboard:
+    repository: ciphercompute-dashboard
+    tag: "0.1.0"
+
+# Non-secret configuration, rendered into a ConfigMap.
+config:
+  CC_ENV: prod
+  CC_LOG_LEVEL: INFO
+  CC_S3_BUCKET: ciphercompute
+  CC_S3_REGION: us-east-1
+  CC_S3_SSE: aws:kms
+  CC_S3_FORCE_PATH_STYLE: "false"
+  CC_TRUST_X_FORWARDED_FOR: "true"
+  CC_RATE_LIMIT_PER_MINUTE: "600"
+  CC_LOGIN_RATE_LIMIT_PER_MINUTE: "10"
+  CC_TENANT_MAX_CONCURRENT_JOBS: "4"
+  CC_ALLOW_SELF_REGISTRATION: "false"
+  CC_OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-collector.observability:4318/v1/traces
+
+# Secrets are never in values: they are synced from Vault or AWS Secrets Manager by the
+# External Secrets Operator into a Kubernetes Secret named <release>-secrets.
+externalSecrets:
+  enabled: true
+  refreshInterval: 1h
+  secretStoreRef:
+    kind: ClusterSecretStore
+    name: aws-secrets-manager   # or "vault"
+  remoteKey: ciphercompute/prod
+  keys:
+    - CC_JWT_SECRET
+    - CC_JWT_PREVIOUS_SECRET
+    - CC_DATABASE_URL
+    - CC_REDIS_URL
+    - CC_S3_KMS_KEY_ID
+
+serviceAccount:
+  # IRSA: the role grants scoped S3 + KMS access (see infra/terraform/iam.tf).
+  annotations: {}
+
+api:
+  replicas: 3
+  port: 8000
+  webConcurrency: 2
+  resources:
+    requests: { cpu: 500m, memory: 1Gi }
+    limits: { memory: 3Gi }
+  hpa:
+    minReplicas: 3
+    maxReplicas: 12
+    targetCPUUtilization: 65
+  pdb:
+    minAvailable: 2
+
+worker:
+  replicas: 2
+  metricsPort: 9100
+  # One job per pod; N=16384 bundles need ~1.5 GB resident, N=32768 several GB.
+  resources:
+    requests: { cpu: "1", memory: 3Gi }
+    limits: { memory: 8Gi }
+  terminationGracePeriodSeconds: 720
+  hpa:
+    minReplicas: 2
+    maxReplicas: 40
+    # Scale on queued jobs per worker via the Prometheus Adapter external metric.
+    queueDepthPerWorker: 4
+    externalMetricName: ciphercompute_queue_depth
+  pdb:
+    minAvailable: 1
+
+dashboard:
+  replicas: 2
+  port: 3000
+  resources:
+    requests: { cpu: 100m, memory: 256Mi }
+    limits: { memory: 512Mi }
+  hpa:
+    minReplicas: 2
+    maxReplicas: 6
+    targetCPUUtilization: 70
+  pdb:
+    minAvailable: 1
+
+migrations:
+  enabled: true
+
+ingress:
+  enabled: true
+  className: nginx
+  clusterIssuer: letsencrypt-prod
+  apiHost: api.ciphercompute.example.com
+  dashboardHost: app.ciphercompute.example.com
+  # Large public key bundles are uploaded through the API.
+  maxBodySize: 1g
+  annotations: {}
+
+networkPolicy:
+  enabled: true
+  ingressControllerNamespace: ingress-nginx
+  monitoringNamespace: observability
+  # Egress targets outside the cluster (RDS, ElastiCache, S3 VPC endpoint), as CIDRs.
+  egressCidrs:
+    - 10.0.0.0/16
+
+monitoring:
+  serviceMonitor: true
+  prometheusRule: true
+
+podSecurity:
+  runAsUser: 10001
+  fsGroup: 10001
