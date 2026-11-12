@@ -102,11 +102,14 @@ async def main_async(ns: argparse.Namespace) -> None:
         store=store,
         semaphore=TenantSemaphore(redis, 4, 900),
     )
-    worker = asyncio.create_task(worker_loop(queue, ctx))
+    # Each loop executes one job at a time (the CKKS work runs in a thread); several loops model a
+    # worker pool. The tenant semaphore still caps one organisation at its configured limit.
+    workers = [asyncio.create_task(worker_loop(queue, ctx)) for _ in range(ns.job_workers)]
     print(
         "CipherCompute dev stack\n"
         f"  API      http://{ns.host}:{ns.port}  (docs at /docs)\n"
         f"  S3       {endpoint}\n"
+        f"  workers  {ns.job_workers} job executor(s)\n"
         f"  data     {data_dir}",
         flush=True,
     )
@@ -114,7 +117,8 @@ async def main_async(ns: argparse.Namespace) -> None:
     try:
         await server.serve()
     finally:
-        worker.cancel()
+        for worker in workers:
+            worker.cancel()
         s3.stop()
         await engine.dispose()
 
@@ -125,6 +129,7 @@ def main() -> int:
     parser.add_argument("--port", type=int, default=8000)
     parser.add_argument("--s3-port", type=int, default=9000)
     parser.add_argument("--data-dir", default=".devstack")
+    parser.add_argument("--job-workers", type=int, default=1, help="concurrent job executors (default 1)")
     ns = parser.parse_args()
     with contextlib.suppress(KeyboardInterrupt):
         asyncio.run(main_async(ns))
