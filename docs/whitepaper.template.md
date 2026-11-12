@@ -143,8 +143,10 @@ The same data showed that one number per level is too coarse. Slot-wise operatio
 element-wise products, regression on feature-major layouts) never key-switch, and their error is
 set by the scale; rotating operations (sum, mean, dot product, variance, matrix-vector) pay the
 key-switching noise floor at every level. Precision is therefore recorded per class, and every job
-reports the class that applies to the operations it ran. Levels a class never reaches in the
-calibration run are shown as n/a in the table rather than extrapolated.
+reports the class that applies to the operations it ran. A computation at depth L may contain any
+operation measured at a shallower depth, so the bound at L is the worst measurement at or below L;
+a level no calibrated operation lands on exactly is also bounded by the next measured level and is
+marked * in the table, as is extrapolation beyond the deepest measured level.
 
 The measured precision per level (bits, after the 4-bit margin; 0 = no usable precision) for each
 standard set:

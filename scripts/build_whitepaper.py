@@ -29,8 +29,8 @@ LOADTEST = ROOT / "loadtest" / "REPORT.md"
 
 def precision_table() -> str:
     sys.path.insert(0, str(ROOT / "packages" / "core" / "src"))
-    from ciphercompute_core.params import all_presets
-    from ciphercompute_core.precision import table_key
+    from ciphercompute_core.params import CKKSParams, all_presets
+    from ciphercompute_core.precision import precision_bits, table_key
 
     table = json.loads(TABLE.read_text(encoding="utf-8"))
     rows = [
@@ -39,17 +39,20 @@ def precision_table() -> str:
         "|---|---|---|---|---|---|---|---|",
     ]
 
-    def by_level(bits: dict[str, int], depth: int) -> str:
-        # A level the class never reached during calibration is shown as "n/a", not extrapolated.
-        return " · ".join(str(bits.get(str(level), "n/a")) for level in range(depth + 1))
+    def by_level(params: CKKSParams, cls: str) -> str:
+        # Exactly what a job's depth report would say; * marks a bound not measured at that level.
+        cells = []
+        for level in range(params.depth + 1):
+            bits, measured = precision_bits(params, level, cls)
+            cells.append(f"{bits}" if measured else f"{bits}*")
+        return " · ".join(cells)
 
     for profile, params in all_presets():
         entry = table.get(table_key(params))
         if entry is None:
             continue
-        bits = entry["precision_bits"]
-        slotwise = by_level(bits.get("slotwise", {}), params.depth)
-        rotations = by_level(bits.get("rotations", {}), params.depth)
+        slotwise = by_level(params, "slotwise")
+        rotations = by_level(params, "rotations")
         rows.append(
             f"| {params.poly_modulus_degree} | {int(params.security_level)} | {profile} | "
             f"{list(params.coeff_mod_bit_sizes)} | {params.depth} | {slotwise} | {rotations} | "
