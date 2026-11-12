@@ -50,6 +50,7 @@ def test_celery_reliability_settings() -> None:
     conf = app.conf
     assert conf.task_acks_late and conf.task_reject_on_worker_lost
     assert conf.worker_prefetch_multiplier == 1
+    assert 0 < conf.worker_max_memory_per_child <= 8 * 1024 * 1024  # recycled before the 8 GiB pod limit
     assert conf.broker_transport_options["visibility_timeout"] > conf.task_time_limit > conf.task_soft_time_limit
     assert "ciphercompute_worker.tasks.execute_job" in app.tasks
 

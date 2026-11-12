@@ -31,6 +31,7 @@ app.conf.update(
     task_acks_late=True,
     task_reject_on_worker_lost=True,
     worker_prefetch_multiplier=1,
+    worker_max_memory_per_child=settings.max_memory_per_child_kib,
     task_soft_time_limit=settings.job_soft_time_limit_seconds,
     task_time_limit=settings.job_hard_time_limit_seconds,
     # Must exceed the hard time limit or Redis redelivers jobs that are still running.

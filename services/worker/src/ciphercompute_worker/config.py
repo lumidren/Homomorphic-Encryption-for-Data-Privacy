@@ -45,6 +45,9 @@ class WorkerSettings(BaseSettings):
     max_queue_wait_seconds: int = 3600
     job_soft_time_limit_seconds: int = 600
     job_hard_time_limit_seconds: int = 660
+    #: SEAL's memory pool never returns memory to the OS; once a worker process's resident memory
+    #: passes this ceiling (KiB) Celery replaces it after the current job. Set below the pod limit.
+    max_memory_per_child_kib: int = 6 * 1024 * 1024
     bundle_cache_size: int = 4
 
     metrics_port: int = 9100
