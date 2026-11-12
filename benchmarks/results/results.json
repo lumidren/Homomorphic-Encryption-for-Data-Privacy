@@ -1,0 +1,1118 @@
+{
+  "machine": {
+    "python": "3.12.16",
+    "tenseal": "0.3.18",
+    "os": "Windows 11",
+    "cpu": "Intel64 Family 6 Model 154 Stepping 3, GenuineIntel",
+    "logical_cpus": 20,
+    "ram_gb": 15.7
+  },
+  "results": [
+    {
+      "profile": "balanced",
+      "params": {
+        "poly_modulus_degree": 8192,
+        "coeff_mod_bit_sizes": [
+          60,
+          40,
+          40,
+          60
+        ],
+        "scale_bits": 40,
+        "security_level": 128
+      },
+      "depth": 2,
+      "slots": 4096,
+      "keygen_seconds": 0.233,
+      "public_bundle_mb": 35.3,
+      "ciphertext_kb": 331.7,
+      "encrypt_ms": 3.24,
+      "decrypt_ms": 0.94,
+      "precision_bits_fresh": {
+        "slotwise": 22,
+        "rotations": 14
+      },
+      "operations": {
+        "vector_add": {
+          "seconds": 0.00015,
+          "levels_consumed": 0,
+          "precision_class": "slotwise",
+          "precision_bits": 22
+        },
+        "scalar_multiply": {
+          "seconds": 0.00051,
+          "levels_consumed": 1,
+          "precision_class": "slotwise",
+          "precision_bits": 18
+        },
+        "elementwise_multiply": {
+          "seconds": 0.00221,
+          "levels_consumed": 1,
+          "precision_class": "slotwise",
+          "precision_bits": 18
+        },
+        "dot_product": {
+          "seconds": 0.01329,
+          "levels_consumed": 1,
+          "precision_class": "rotations",
+          "precision_bits": 14
+        },
+        "sum": {
+          "seconds": 0.0179,
+          "levels_consumed": 0,
+          "precision_class": "rotations",
+          "precision_bits": 14
+        },
+        "mean": {
+          "seconds": 0.01833,
+          "levels_consumed": 1,
+          "precision_class": "rotations",
+          "precision_bits": 14
+        },
+        "variance": {
+          "seconds": 0.03357,
+          "levels_consumed": 2,
+          "precision_class": "rotations",
+          "precision_bits": 14
+        },
+        "weighted_average": {
+          "seconds": 0.01267,
+          "levels_consumed": 1,
+          "precision_class": "rotations",
+          "precision_bits": 14
+        },
+        "linear_regression": {
+          "seconds": 0.00215,
+          "levels_consumed": 1,
+          "precision_class": "slotwise",
+          "precision_bits": 18
+        },
+        "logistic_regression deg3": {
+          "seconds": null,
+          "refused": "depth_exhausted"
+        },
+        "logistic_regression deg5": {
+          "seconds": null,
+          "refused": "depth_exhausted"
+        },
+        "matvec_multiply (16x64)": {
+          "seconds": 0.06704,
+          "levels_consumed": 1,
+          "precision_class": "rotations",
+          "precision_bits": 14
+        }
+      }
+    },
+    {
+      "profile": "deep",
+      "params": {
+        "poly_modulus_degree": 8192,
+        "coeff_mod_bit_sizes": [
+          45,
+          30,
+          30,
+          30,
+          30,
+          45
+        ],
+        "scale_bits": 30,
+        "security_level": 128
+      },
+      "depth": 4,
+      "slots": 4096,
+      "keygen_seconds": 0.501,
+      "public_bundle_mb": 65.3,
+      "ciphertext_kb": 405.9,
+      "encrypt_ms": 4.43,
+      "decrypt_ms": 1.47,
+      "precision_bits_fresh": {
+        "slotwise": 12,
+        "rotations": 4
+      },
+      "operations": {
+        "vector_add": {
+          "seconds": 0.00022,
+          "levels_consumed": 0,
+          "precision_class": "slotwise",
+          "precision_bits": 12
+        },
+        "scalar_multiply": {
+          "seconds": 0.00095,
+          "levels_consumed": 1,
+          "precision_class": "slotwise",
+          "precision_bits": 9
+        },
+        "elementwise_multiply": {
+          "seconds": 0.00492,
+          "levels_consumed": 1,
+          "precision_class": "slotwise",
+          "precision_bits": 9
+        },
+        "dot_product": {
+          "seconds": 0.03281,
+          "levels_consumed": 1,
+          "precision_class": "rotations",
+          "precision_bits": 4
+        },
+        "sum": {
+          "seconds": 0.04088,
+          "levels_consumed": 0,
+          "precision_class": "rotations",
+          "precision_bits": 4
+        },
+        "mean": {
+          "seconds": 0.04229,
+          "levels_consumed": 1,
+          "precision_class": "rotations",
+          "precision_bits": 4
+        },
+        "variance": {
+          "seconds": 0.07809,
+          "levels_consumed": 2,
+          "precision_class": "rotations",
+          "precision_bits": 4
+        },
+        "weighted_average": {
+          "seconds": 0.03112,
+          "levels_consumed": 1,
+          "precision_class": "rotations",
+          "precision_bits": 4
+        },
+        "linear_regression": {
+          "seconds": 0.00411,
+          "levels_consumed": 1,
+          "precision_class": "slotwise",
+          "precision_bits": 9
+        },
+        "logistic_regression deg3": {
+          "seconds": 0.01543,
+          "levels_consumed": 3,
+          "precision_class": "slotwise",
+          "precision_bits": 9
+        },
+        "logistic_regression deg5": {
+          "seconds": 0.02054,
+          "levels_consumed": 4,
+          "precision_class": "slotwise",
+          "precision_bits": 9
+        },
+        "matvec_multiply (16x64)": {
+          "seconds": 0.15653,
+          "levels_consumed": 1,
+          "precision_class": "rotations",
+          "precision_bits": 4
+        }
+      }
+    },
+    {
+      "profile": "balanced",
+      "params": {
+        "poly_modulus_degree": 8192,
+        "coeff_mod_bit_sizes": [
+          45,
+          30,
+          30,
+          45
+        ],
+        "scale_bits": 30,
+        "security_level": 192
+      },
+      "depth": 2,
+      "slots": 4096,
+      "keygen_seconds": 0.233,
+      "public_bundle_mb": 28.1,
+      "ciphertext_kb": 257.6,
+      "encrypt_ms": 3.46,
+      "decrypt_ms": 1.0,
+      "precision_bits_fresh": {
+        "slotwise": 12,
+        "rotations": 4
+      },
+      "operations": {
+        "vector_add": {
+          "seconds": 0.00016,
+          "levels_consumed": 0,
+          "precision_class": "slotwise",
+          "precision_bits": 12
+        },
+        "scalar_multiply": {
+          "seconds": 0.00053,
+          "levels_consumed": 1,
+          "precision_class": "slotwise",
+          "precision_bits": 10
+        },
+        "elementwise_multiply": {
+          "seconds": 0.00214,
+          "levels_consumed": 1,
+          "precision_class": "slotwise",
+          "precision_bits": 10
+        },
+        "dot_product": {
+          "seconds": 0.0134,
+          "levels_consumed": 1,
+          "precision_class": "rotations",
+          "precision_bits": 4
+        },
+        "sum": {
+          "seconds": 0.0187,
+          "levels_consumed": 0,
+          "precision_class": "rotations",
+          "precision_bits": 4
+        },
+        "mean": {
+          "seconds": 0.01857,
+          "levels_consumed": 1,
+          "precision_class": "rotations",
+          "precision_bits": 4
+        },
+        "variance": {
+          "seconds": 0.0342,
+          "levels_consumed": 2,
+          "precision_class": "rotations",
+          "precision_bits": 4
+        },
+        "weighted_average": {
+          "seconds": 0.0132,
+          "levels_consumed": 1,
+          "precision_class": "rotations",
+          "precision_bits": 4
+        },
+        "linear_regression": {
+          "seconds": 0.00203,
+          "levels_consumed": 1,
+          "precision_class": "slotwise",
+          "precision_bits": 10
+        },
+        "logistic_regression deg3": {
+          "seconds": null,
+          "refused": "depth_exhausted"
+        },
+        "logistic_regression deg5": {
+          "seconds": null,
+          "refused": "depth_exhausted"
+        },
+        "matvec_multiply (16x64)": {
+          "seconds": 0.06895,
+          "levels_consumed": 1,
+          "precision_class": "rotations",
+          "precision_bits": 4
+        }
+      }
+    },
+    {
+      "profile": "deep",
+      "params": {
+        "poly_modulus_degree": 8192,
+        "coeff_mod_bit_sizes": [
+          38,
+          25,
+          25,
+          25,
+          38
+        ],
+        "scale_bits": 25,
+        "security_level": 192
+      },
+      "depth": 3,
+      "slots": 4096,
+      "keygen_seconds": 0.356,
+      "public_bundle_mb": 39.4,
+      "ciphertext_kb": 291.5,
+      "encrypt_ms": 3.96,
+      "decrypt_ms": 1.12,
+      "precision_bits_fresh": {
+        "slotwise": 7,
+        "rotations": 0
+      },
+      "operations": {
+        "vector_add": {
+          "seconds": 0.00015,
+          "levels_consumed": 0,
+          "precision_class": "slotwise",
+          "precision_bits": 7
+        },
+        "scalar_multiply": {
+          "seconds": 0.00068,
+          "levels_consumed": 1,
+          "precision_class": "slotwise",
+          "precision_bits": 5
+        },
+        "elementwise_multiply": {
+          "seconds": 0.00314,
+          "levels_consumed": 1,
+          "precision_class": "slotwise",
+          "precision_bits": 5
+        },
+        "dot_product": {
+          "seconds": 0.02176,
+          "levels_consumed": 1,
+          "precision_class": "rotations",
+          "precision_bits": 0
+        },
+        "sum": {
+          "seconds": 0.02896,
+          "levels_consumed": 0,
+          "precision_class": "rotations",
+          "precision_bits": 0
+        },
+        "mean": {
+          "seconds": 0.0314,
+          "levels_consumed": 1,
+          "precision_class": "rotations",
+          "precision_bits": 0
+        },
+        "variance": {
+          "seconds": 0.05891,
+          "levels_consumed": 2,
+          "precision_class": "rotations",
+          "precision_bits": 0
+        },
+        "weighted_average": {
+          "seconds": 0.02064,
+          "levels_consumed": 1,
+          "precision_class": "rotations",
+          "precision_bits": 0
+        },
+        "linear_regression": {
+          "seconds": 0.0033,
+          "levels_consumed": 1,
+          "precision_class": "slotwise",
+          "precision_bits": 5
+        },
+        "logistic_regression deg3": {
+          "seconds": 0.01095,
+          "levels_consumed": 3,
+          "precision_class": "slotwise",
+          "precision_bits": 4
+        },
+        "logistic_regression deg5": {
+          "seconds": null,
+          "refused": "depth_exhausted"
+        },
+        "matvec_multiply (16x64)": {
+          "seconds": 0.09874,
+          "levels_consumed": 1,
+          "precision_class": "rotations",
+          "precision_bits": 0
+        }
+      }
+    },
+    {
+      "profile": "balanced",
+      "params": {
+        "poly_modulus_degree": 8192,
+        "coeff_mod_bit_sizes": [
+          36,
+          23,
+          23,
+          36
+        ],
+        "scale_bits": 23,
+        "security_level": 256
+      },
+      "depth": 2,
+      "slots": 4096,
+      "keygen_seconds": 0.231,
+      "public_bundle_mb": 22.8,
+      "ciphertext_kb": 211.1,
+      "encrypt_ms": 3.25,
+      "decrypt_ms": 0.85,
+      "precision_bits_fresh": {
+        "slotwise": 5,
+        "rotations": 0
+      },
+      "operations": {
+        "vector_add": {
+          "seconds": 0.00015,
+          "levels_consumed": 0,
+          "precision_class": "slotwise",
+          "precision_bits": 5
+        },
+        "scalar_multiply": {
+          "seconds": 0.00055,
+          "levels_consumed": 1,
+          "precision_class": "slotwise",
+          "precision_bits": 1
+        },
+        "elementwise_multiply": {
+          "seconds": 0.00215,
+          "levels_consumed": 1,
+          "precision_class": "slotwise",
+          "precision_bits": 1
+        },
+        "dot_product": {
+          "seconds": 0.01372,
+          "levels_consumed": 1,
+          "precision_class": "rotations",
+          "precision_bits": 0
+        },
+        "sum": {
+          "seconds": 0.01819,
+          "levels_consumed": 0,
+          "precision_class": "rotations",
+          "precision_bits": 0
+        },
+        "mean": {
+          "seconds": 0.01863,
+          "levels_consumed": 1,
+          "precision_class": "rotations",
+          "precision_bits": 0
+        },
+        "variance": {
+          "seconds": 0.03413,
+          "levels_consumed": 2,
+          "precision_class": "rotations",
+          "precision_bits": 0
+        },
+        "weighted_average": {
+          "seconds": 0.013,
+          "levels_consumed": 1,
+          "precision_class": "rotations",
+          "precision_bits": 0
+        },
+        "linear_regression": {
+          "seconds": 0.00211,
+          "levels_consumed": 1,
+          "precision_class": "slotwise",
+          "precision_bits": 1
+        },
+        "logistic_regression deg3": {
+          "seconds": null,
+          "refused": "depth_exhausted"
+        },
+        "logistic_regression deg5": {
+          "seconds": null,
+          "refused": "depth_exhausted"
+        },
+        "matvec_multiply (16x64)": {
+          "seconds": 0.06592,
+          "levels_consumed": 1,
+          "precision_class": "rotations",
+          "precision_bits": 0
+        }
+      }
+    },
+    {
+      "profile": "balanced",
+      "params": {
+        "poly_modulus_degree": 16384,
+        "coeff_mod_bit_sizes": [
+          60,
+          40,
+          40,
+          40,
+          40,
+          40,
+          40,
+          60
+        ],
+        "scale_bits": 40,
+        "security_level": 128
+      },
+      "depth": 6,
+      "slots": 8192,
+      "keygen_seconds": 1.915,
+      "public_bundle_mb": 325.9,
+      "ciphertext_kb": 1449.9,
+      "encrypt_ms": 11.54,
+      "decrypt_ms": 5.08,
+      "precision_bits_fresh": {
+        "slotwise": 21,
+        "rotations": 12
+      },
+      "operations": {
+        "vector_add": {
+          "seconds": 0.00094,
+          "levels_consumed": 0,
+          "precision_class": "slotwise",
+          "precision_bits": 21
+        },
+        "scalar_multiply": {
+          "seconds": 0.00341,
+          "levels_consumed": 1,
+          "precision_class": "slotwise",
+          "precision_bits": 15
+        },
+        "elementwise_multiply": {
+          "seconds": 0.01552,
+          "levels_consumed": 1,
+          "precision_class": "slotwise",
+          "precision_bits": 15
+        },
+        "dot_product": {
+          "seconds": 0.14559,
+          "levels_consumed": 1,
+          "precision_class": "rotations",
+          "precision_bits": 12
+        },
+        "sum": {
+          "seconds": 0.17395,
+          "levels_consumed": 0,
+          "precision_class": "rotations",
+          "precision_bits": 12
+        },
+        "mean": {
+          "seconds": 0.15851,
+          "levels_consumed": 1,
+          "precision_class": "rotations",
+          "precision_bits": 12
+        },
+        "variance": {
+          "seconds": 0.30351,
+          "levels_consumed": 2,
+          "precision_class": "rotations",
+          "precision_bits": 12
+        },
+        "weighted_average": {
+          "seconds": 0.12252,
+          "levels_consumed": 1,
+          "precision_class": "rotations",
+          "precision_bits": 12
+        },
+        "linear_regression": {
+          "seconds": 0.01303,
+          "levels_consumed": 1,
+          "precision_class": "slotwise",
+          "precision_bits": 15
+        },
+        "logistic_regression deg3": {
+          "seconds": 0.05029,
+          "levels_consumed": 3,
+          "precision_class": "slotwise",
+          "precision_bits": 15
+        },
+        "logistic_regression deg5": {
+          "seconds": 0.06755,
+          "levels_consumed": 4,
+          "precision_class": "slotwise",
+          "precision_bits": 15
+        },
+        "matvec_multiply (16x64)": {
+          "seconds": 0.53813,
+          "levels_consumed": 1,
+          "precision_class": "rotations",
+          "precision_bits": 12
+        }
+      }
+    },
+    {
+      "profile": "deep",
+      "params": {
+        "poly_modulus_degree": 16384,
+        "coeff_mod_bit_sizes": [
+          50,
+          30,
+          30,
+          30,
+          30,
+          30,
+          30,
+          30,
+          30,
+          30,
+          30,
+          30,
+          50
+        ],
+        "scale_bits": 30,
+        "security_level": 128
+      },
+      "depth": 11,
+      "slots": 8192,
+      "keygen_seconds": 5.282,
+      "public_bundle_mb": 682.4,
+      "ciphertext_kb": 1860.2,
+      "encrypt_ms": 19.55,
+      "decrypt_ms": 9.45,
+      "precision_bits_fresh": {
+        "slotwise": 11,
+        "rotations": 3
+      },
+      "operations": {
+        "vector_add": {
+          "seconds": 0.00132,
+          "levels_consumed": 0,
+          "precision_class": "slotwise",
+          "precision_bits": 11
+        },
+        "scalar_multiply": {
+          "seconds": 0.00553,
+          "levels_consumed": 1,
+          "precision_class": "slotwise",
+          "precision_bits": 8
+        },
+        "elementwise_multiply": {
+          "seconds": 0.03565,
+          "levels_consumed": 1,
+          "precision_class": "slotwise",
+          "precision_bits": 8
+        },
+        "dot_product": {
+          "seconds": 0.37672,
+          "levels_consumed": 1,
+          "precision_class": "rotations",
+          "precision_bits": 3
+        },
+        "sum": {
+          "seconds": 0.38429,
+          "levels_consumed": 0,
+          "precision_class": "rotations",
+          "precision_bits": 3
+        },
+        "mean": {
+          "seconds": 0.38528,
+          "levels_consumed": 1,
+          "precision_class": "rotations",
+          "precision_bits": 3
+        },
+        "variance": {
+          "seconds": 0.78112,
+          "levels_consumed": 2,
+          "precision_class": "rotations",
+          "precision_bits": 3
+        },
+        "weighted_average": {
+          "seconds": 0.33188,
+          "levels_consumed": 1,
+          "precision_class": "rotations",
+          "precision_bits": 3
+        },
+        "linear_regression": {
+          "seconds": 0.02365,
+          "levels_consumed": 1,
+          "precision_class": "slotwise",
+          "precision_bits": 8
+        },
+        "logistic_regression deg3": {
+          "seconds": 0.1116,
+          "levels_consumed": 3,
+          "precision_class": "slotwise",
+          "precision_bits": 8
+        },
+        "logistic_regression deg5": {
+          "seconds": 0.18418,
+          "levels_consumed": 4,
+          "precision_class": "slotwise",
+          "precision_bits": 7
+        },
+        "matvec_multiply (16x64)": {
+          "seconds": 1.21626,
+          "levels_consumed": 1,
+          "precision_class": "rotations",
+          "precision_bits": 3
+        }
+      }
+    },
+    {
+      "profile": "balanced",
+      "params": {
+        "poly_modulus_degree": 16384,
+        "coeff_mod_bit_sizes": [
+          55,
+          35,
+          35,
+          35,
+          35,
+          35,
+          55
+        ],
+        "scale_bits": 35,
+        "security_level": 192
+      },
+      "depth": 5,
+      "slots": 8192,
+      "keygen_seconds": 1.444,
+      "public_bundle_mb": 222.5,
+      "ciphertext_kb": 1118.4,
+      "encrypt_ms": 11.34,
+      "decrypt_ms": 3.9,
+      "precision_bits_fresh": {
+        "slotwise": 17,
+        "rotations": 7
+      },
+      "operations": {
+        "vector_add": {
+          "seconds": 0.00054,
+          "levels_consumed": 0,
+          "precision_class": "slotwise",
+          "precision_bits": 17
+        },
+        "scalar_multiply": {
+          "seconds": 0.00282,
+          "levels_consumed": 1,
+          "precision_class": "slotwise",
+          "precision_bits": 12
+        },
+        "elementwise_multiply": {
+          "seconds": 0.01201,
+          "levels_consumed": 1,
+          "precision_class": "slotwise",
+          "precision_bits": 12
+        },
+        "dot_product": {
+          "seconds": 0.10071,
+          "levels_consumed": 1,
+          "precision_class": "rotations",
+          "precision_bits": 7
+        },
+        "sum": {
+          "seconds": 0.11838,
+          "levels_consumed": 0,
+          "precision_class": "rotations",
+          "precision_bits": 7
+        },
+        "mean": {
+          "seconds": 0.12177,
+          "levels_consumed": 1,
+          "precision_class": "rotations",
+          "precision_bits": 7
+        },
+        "variance": {
+          "seconds": 0.23161,
+          "levels_consumed": 2,
+          "precision_class": "rotations",
+          "precision_bits": 7
+        },
+        "weighted_average": {
+          "seconds": 0.09298,
+          "levels_consumed": 1,
+          "precision_class": "rotations",
+          "precision_bits": 7
+        },
+        "linear_regression": {
+          "seconds": 0.00991,
+          "levels_consumed": 1,
+          "precision_class": "slotwise",
+          "precision_bits": 12
+        },
+        "logistic_regression deg3": {
+          "seconds": 0.03995,
+          "levels_consumed": 3,
+          "precision_class": "slotwise",
+          "precision_bits": 12
+        },
+        "logistic_regression deg5": {
+          "seconds": 0.05337,
+          "levels_consumed": 4,
+          "precision_class": "slotwise",
+          "precision_bits": 12
+        },
+        "matvec_multiply (16x64)": {
+          "seconds": 0.43446,
+          "levels_consumed": 1,
+          "precision_class": "rotations",
+          "precision_bits": 7
+        }
+      }
+    },
+    {
+      "profile": "deep",
+      "params": {
+        "poly_modulus_degree": 16384,
+        "coeff_mod_bit_sizes": [
+          45,
+          30,
+          30,
+          30,
+          30,
+          30,
+          30,
+          30,
+          45
+        ],
+        "scale_bits": 30,
+        "security_level": 192
+      },
+      "depth": 7,
+      "slots": 8192,
+      "keygen_seconds": 2.427,
+      "public_bundle_mb": 320.6,
+      "ciphertext_kb": 1253.2,
+      "encrypt_ms": 13.55,
+      "decrypt_ms": 6.65,
+      "precision_bits_fresh": {
+        "slotwise": 11,
+        "rotations": 4
+      },
+      "operations": {
+        "vector_add": {
+          "seconds": 0.00084,
+          "levels_consumed": 0,
+          "precision_class": "slotwise",
+          "precision_bits": 11
+        },
+        "scalar_multiply": {
+          "seconds": 0.00347,
+          "levels_consumed": 1,
+          "precision_class": "slotwise",
+          "precision_bits": 9
+        },
+        "elementwise_multiply": {
+          "seconds": 0.02007,
+          "levels_consumed": 1,
+          "precision_class": "slotwise",
+          "precision_bits": 9
+        },
+        "dot_product": {
+          "seconds": 0.17829,
+          "levels_consumed": 1,
+          "precision_class": "rotations",
+          "precision_bits": 4
+        },
+        "sum": {
+          "seconds": 0.2005,
+          "levels_consumed": 0,
+          "precision_class": "rotations",
+          "precision_bits": 4
+        },
+        "mean": {
+          "seconds": 0.19423,
+          "levels_consumed": 1,
+          "precision_class": "rotations",
+          "precision_bits": 4
+        },
+        "variance": {
+          "seconds": 0.38587,
+          "levels_consumed": 2,
+          "precision_class": "rotations",
+          "precision_bits": 4
+        },
+        "weighted_average": {
+          "seconds": 0.15828,
+          "levels_consumed": 1,
+          "precision_class": "rotations",
+          "precision_bits": 4
+        },
+        "linear_regression": {
+          "seconds": 0.01605,
+          "levels_consumed": 1,
+          "precision_class": "slotwise",
+          "precision_bits": 9
+        },
+        "logistic_regression deg3": {
+          "seconds": 0.06258,
+          "levels_consumed": 3,
+          "precision_class": "slotwise",
+          "precision_bits": 9
+        },
+        "logistic_regression deg5": {
+          "seconds": 0.08792,
+          "levels_consumed": 4,
+          "precision_class": "slotwise",
+          "precision_bits": 8
+        },
+        "matvec_multiply (16x64)": {
+          "seconds": 0.65434,
+          "levels_consumed": 1,
+          "precision_class": "rotations",
+          "precision_bits": 4
+        }
+      }
+    },
+    {
+      "profile": "balanced",
+      "params": {
+        "poly_modulus_degree": 16384,
+        "coeff_mod_bit_sizes": [
+          43,
+          29,
+          29,
+          29,
+          29,
+          29,
+          43
+        ],
+        "scale_bits": 29,
+        "security_level": 256
+      },
+      "depth": 5,
+      "slots": 8192,
+      "keygen_seconds": 1.444,
+      "public_bundle_mb": 189.1,
+      "ciphertext_kb": 944.4,
+      "encrypt_ms": 9.62,
+      "decrypt_ms": 3.85,
+      "precision_bits_fresh": {
+        "slotwise": 10,
+        "rotations": 3
+      },
+      "operations": {
+        "vector_add": {
+          "seconds": 0.00049,
+          "levels_consumed": 0,
+          "precision_class": "slotwise",
+          "precision_bits": 10
+        },
+        "scalar_multiply": {
+          "seconds": 0.00243,
+          "levels_consumed": 1,
+          "precision_class": "slotwise",
+          "precision_bits": 7
+        },
+        "elementwise_multiply": {
+          "seconds": 0.01178,
+          "levels_consumed": 1,
+          "precision_class": "slotwise",
+          "precision_bits": 7
+        },
+        "dot_product": {
+          "seconds": 0.0998,
+          "levels_consumed": 1,
+          "precision_class": "rotations",
+          "precision_bits": 2
+        },
+        "sum": {
+          "seconds": 0.12893,
+          "levels_consumed": 0,
+          "precision_class": "rotations",
+          "precision_bits": 3
+        },
+        "mean": {
+          "seconds": 0.11751,
+          "levels_consumed": 1,
+          "precision_class": "rotations",
+          "precision_bits": 2
+        },
+        "variance": {
+          "seconds": 0.23717,
+          "levels_consumed": 2,
+          "precision_class": "rotations",
+          "precision_bits": 2
+        },
+        "weighted_average": {
+          "seconds": 0.09631,
+          "levels_consumed": 1,
+          "precision_class": "rotations",
+          "precision_bits": 2
+        },
+        "linear_regression": {
+          "seconds": 0.01064,
+          "levels_consumed": 1,
+          "precision_class": "slotwise",
+          "precision_bits": 7
+        },
+        "logistic_regression deg3": {
+          "seconds": 0.04098,
+          "levels_consumed": 3,
+          "precision_class": "slotwise",
+          "precision_bits": 7
+        },
+        "logistic_regression deg5": {
+          "seconds": 0.05563,
+          "levels_consumed": 4,
+          "precision_class": "slotwise",
+          "precision_bits": 7
+        },
+        "matvec_multiply (16x64)": {
+          "seconds": 0.44016,
+          "levels_consumed": 1,
+          "precision_class": "rotations",
+          "precision_bits": 2
+        }
+      }
+    },
+    {
+      "profile": "deep",
+      "params": {
+        "poly_modulus_degree": 16384,
+        "coeff_mod_bit_sizes": [
+          38,
+          26,
+          26,
+          26,
+          26,
+          26,
+          26,
+          38
+        ],
+        "scale_bits": 26,
+        "security_level": 256
+      },
+      "depth": 6,
+      "slots": 8192,
+      "keygen_seconds": 1.926,
+      "public_bundle_mb": 226.0,
+      "ciphertext_kb": 996.5,
+      "encrypt_ms": 13.19,
+      "decrypt_ms": 5.67,
+      "precision_bits_fresh": {
+        "slotwise": 7,
+        "rotations": 0
+      },
+      "operations": {
+        "vector_add": {
+          "seconds": 0.00107,
+          "levels_consumed": 0,
+          "precision_class": "slotwise",
+          "precision_bits": 7
+        },
+        "scalar_multiply": {
+          "seconds": 0.00347,
+          "levels_consumed": 1,
+          "precision_class": "slotwise",
+          "precision_bits": 5
+        },
+        "elementwise_multiply": {
+          "seconds": 0.01629,
+          "levels_consumed": 1,
+          "precision_class": "slotwise",
+          "precision_bits": 5
+        },
+        "dot_product": {
+          "seconds": 0.14601,
+          "levels_consumed": 1,
+          "precision_class": "rotations",
+          "precision_bits": 0
+        },
+        "sum": {
+          "seconds": 0.15684,
+          "levels_consumed": 0,
+          "precision_class": "rotations",
+          "precision_bits": 0
+        },
+        "mean": {
+          "seconds": 0.15414,
+          "levels_consumed": 1,
+          "precision_class": "rotations",
+          "precision_bits": 0
+        },
+        "variance": {
+          "seconds": 0.30384,
+          "levels_consumed": 2,
+          "precision_class": "rotations",
+          "precision_bits": 0
+        },
+        "weighted_average": {
+          "seconds": 0.1238,
+          "levels_consumed": 1,
+          "precision_class": "rotations",
+          "precision_bits": 0
+        },
+        "linear_regression": {
+          "seconds": 0.01277,
+          "levels_consumed": 1,
+          "precision_class": "slotwise",
+          "precision_bits": 5
+        },
+        "logistic_regression deg3": {
+          "seconds": 0.053,
+          "levels_consumed": 3,
+          "precision_class": "slotwise",
+          "precision_bits": 5
+        },
+        "logistic_regression deg5": {
+          "seconds": 0.07068,
+          "levels_consumed": 4,
+          "precision_class": "slotwise",
+          "precision_bits": 4
+        },
+        "matvec_multiply (16x64)": {
+          "seconds": 0.53473,
+          "levels_consumed": 1,
+          "precision_class": "rotations",
+          "precision_bits": 0
+        }
+      }
+    }
+  ]
+}
