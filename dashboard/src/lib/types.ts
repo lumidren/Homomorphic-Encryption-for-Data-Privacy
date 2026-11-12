@@ -74,6 +74,7 @@ export interface DepthReport {
   levels_remaining: number;
   precision_bits: number;
   precision_measured: boolean;
+  precision_class: "slotwise" | "rotations";
 }
 
 export interface Job {
@@ -112,7 +113,7 @@ export interface ParameterSet extends CkksParams {
   depth: number;
   slots: number;
   integer_headroom_bits: number;
-  precision_bits_by_level: Record<string, number>;
+  precision_bits_by_level: Record<"slotwise" | "rotations", Record<string, number>>;
   precision_measured: boolean;
 }
 

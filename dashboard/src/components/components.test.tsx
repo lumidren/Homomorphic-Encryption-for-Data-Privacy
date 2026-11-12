@@ -38,6 +38,7 @@ const report = (consumed: number, total = 4, extra: Partial<DepthReport> = {}): 
   levels_remaining: total - consumed,
   precision_bits: 10,
   precision_measured: true,
+  precision_class: "rotations",
   ...extra,
 });
 
@@ -75,13 +76,15 @@ describe("DepthBudget (noise-budget visualization)", () => {
     render(<DepthBudget report={report(3, 4)} />);
     expect(screen.getByTestId("depth-segments").children).toHaveLength(4);
     expect(screen.getByText(/3 of 4 levels consumed/)).toBeInTheDocument();
-    expect(screen.getByText(/about 10 bits of precision \(measured\)/)).toBeInTheDocument();
+    expect(screen.getByText(/about 10 bits of precision \(measured, rotating operations\)/)).toBeInTheDocument();
   });
 
   it("flags plan/actual mismatch, estimated precision, exhaustion and missing reports", () => {
-    const { rerender } = render(<DepthBudget report={report(4, 4, { precision_measured: false })} planned={report(3, 4)} compact />);
+    const { rerender } = render(
+      <DepthBudget report={report(4, 4, { precision_measured: false, precision_class: "slotwise" })} planned={report(3, 4)} compact />,
+    );
     expect(screen.getByText(/planned 3/)).toBeInTheDocument();
-    expect(screen.getByText(/estimated/)).toBeInTheDocument();
+    expect(screen.getByText(/estimated, slot-wise operations/)).toBeInTheDocument();
     expect(screen.getByTestId("depth-segments").children[0]).toHaveClass("bg-danger");
     rerender(<DepthBudget report={report(1, 4)} />);
     expect(screen.getByTestId("depth-segments").children[0]).toHaveClass("bg-primary");

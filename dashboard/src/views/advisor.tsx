@@ -120,7 +120,7 @@ export function AdvisorView() {
         </Card>
       </div>
       <Card className="mt-6">
-        <CardHeader title="Standard parameter sets" description="Precision is measured across many key rings, with a 16x safety margin (bits after 0, 1, 2… levels)." />
+        <CardHeader title="Standard parameter sets" description="Measured across many key rings with a 16x safety margin. Slot-wise operations (add, multiply, batched regression) are far more precise than rotating ones (sum, mean, dot product), which hit a key-switching noise floor. 0 bits means no usable precision." />
         <QueryState query={sets} label="parameter sets">
           {(items) => (
             <Table caption="Standard CKKS parameter sets">
@@ -132,7 +132,8 @@ export function AdvisorView() {
                   <Th>Levels</Th>
                   <Th>Scale</Th>
                   <Th>Slots</Th>
-                  <Th>Precision bits by level</Th>
+                  <Th>Bits by level, slot-wise ops</Th>
+                  <Th>Bits by level, rotating ops</Th>
                 </tr>
               </thead>
               <tbody>
@@ -144,7 +145,8 @@ export function AdvisorView() {
                     <Td>{s.depth}</Td>
                     <Td>2^{s.scale_bits}</Td>
                     <Td>{s.slots}</Td>
-                    <Td className="font-mono text-xs">{Object.values(s.precision_bits_by_level).join(" · ")}</Td>
+                    <Td className="font-mono text-xs">{Object.values(s.precision_bits_by_level.slotwise).join(" · ")}</Td>
+                    <Td className="font-mono text-xs">{Object.values(s.precision_bits_by_level.rotations).join(" · ")}</Td>
                   </tr>
                 ))}
               </tbody>

@@ -25,7 +25,8 @@ export function DepthBudget({ report, planned, compact = false }: { report: Dept
         </span>
         {", "}
         {report.levels_remaining} remaining · about {report.precision_bits} bits of precision
-        {report.precision_measured ? " (measured)" : " (estimated)"}
+        {report.precision_measured ? " (measured" : " (estimated"}
+        {report.precision_class === "slotwise" ? ", slot-wise operations)" : ", rotating operations)"}
         {planned && planned.levels_consumed !== report.levels_consumed ? (
           <span className="text-danger"> · planned {planned.levels_consumed}</span>
         ) : null}
