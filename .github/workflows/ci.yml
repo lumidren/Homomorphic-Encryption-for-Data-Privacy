@@ -190,13 +190,14 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - uses: astral-sh/setup-uv@v6
-      - run: uv venv --python ${{ env.PYTHON_VERSION }} && uv pip install -e packages/core -e services/api -e services/worker -e packages/client pip-audit bandit semgrep
+      - run: uv venv --python ${{ env.PYTHON_VERSION }} && uv pip install -e packages/core -e services/api -e services/worker -e packages/client pip-audit bandit
+      # Semgrep pins its own (older) mcp and OpenTelemetry; keep it out of the audited environment.
       - name: pip-audit
         run: .venv/bin/pip-audit --skip-editable  # our own packages are editable; every third-party dependency is audited
       - name: Bandit (HIGH severity fails)
         run: .venv/bin/bandit -r packages/core/src packages/client/src services/api/src services/worker/src --severity-level high --confidence-level medium
       - name: Semgrep (OWASP Top 10 + Python + project rules)
-        run: .venv/bin/semgrep scan --config p/owasp-top-ten --config p/python --config p/secrets --config .semgrep --severity ERROR --error
+        run: uvx --isolated semgrep scan --config p/owasp-top-ten --config p/python --config p/secrets --config .semgrep --severity ERROR --error
       - uses: actions/setup-node@v4
         with: { node-version: "${{ env.NODE_VERSION }}" }
       - name: npm audit
