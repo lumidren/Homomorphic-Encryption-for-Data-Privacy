@@ -87,6 +87,46 @@ def resolve(text: str, markers: dict[str, list[tuple[str, int]]]) -> tuple[str, 
     return REF_RE.sub(replace, text), missing, changed
 
 
+ROW_RE = re.compile(r"^\| [A-Z]-\d+ \|")
+TEST_REF_RE = re.compile(r"`([^`\s]*test_[^`\s]*)`")
+
+
+def _test_files(name: str) -> list[Path]:
+    skip = SKIP_PARTS - {"tests"}
+    return [p for p in ROOT.rglob(name) if not skip & set(p.relative_to(ROOT).parts)]
+
+
+def missing_tests(text: str) -> list[str]:
+    """Every test named in a register row's last column must exist, so evidence cannot rot.
+
+    Accepted forms: ``path/to/test_x.py``, ``path/to/test_x.py::test_y``, a bare ``test_x.py``
+    (unique file name), and ``::test_y`` (same file as the previous reference in the row).
+    """
+    problems: list[str] = []
+    for line in text.splitlines():
+        if not ROW_RE.match(line):
+            continue
+        row_id = line.split("|")[1].strip()
+        evidence = line.rstrip().rstrip("|").rsplit("|", 1)[-1]
+        current: list[Path] = []
+        for ref in TEST_REF_RE.findall(evidence):
+            file_part, _, func = ref.partition("::")
+            if file_part:
+                path = ROOT / file_part
+                current = [path] if "/" in file_part and path.is_file() else _test_files(Path(file_part).name)
+                if not current:
+                    problems.append(f"{row_id}: test file `{file_part}` does not exist")
+                    continue
+            if func and not any(
+                re.search(rf"^\s*(?:async\s+)?def {re.escape(func)}\(", f.read_text(encoding="utf-8"), re.M)
+                for f in current
+            ):
+                problems.append(
+                    f"{row_id}: test `{func}` not found in {[c.relative_to(ROOT).as_posix() for c in current]}"
+                )
+    return problems
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--check", action="store_true", help="exit non-zero instead of rewriting")
@@ -103,8 +143,12 @@ def main() -> int:
     for marker_id in orphans:
         print(f"ORPHAN   {marker_id}: marker in code but no row in THREAT_MODEL.md", file=sys.stderr)
 
+    bad_tests = missing_tests(text)
+    for problem in bad_tests:
+        print(f"NO TEST  {problem}", file=sys.stderr)
+
     if args.check:
-        if missing or orphans or new_text != text:
+        if missing or orphans or bad_tests or new_text != text:
             print(
                 f"THREAT_MODEL.md is stale ({changed} reference(s) differ); run scripts/resolve_threat_refs.py",
                 file=sys.stderr,
