@@ -60,6 +60,7 @@ Thumbs.db
 
 # Local dev stack data (SQLite DB, moto state)
 .devstack/
+.lt-devstack/
 
 # Local tool configuration
 .claude/
