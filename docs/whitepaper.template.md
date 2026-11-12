@@ -7,8 +7,9 @@ date: "November 2026"
 # CipherCompute: Statistics and Inference on Encrypted Data with CKKS
 
 *A technical whitepaper. It assumes linear algebra and modular arithmetic at the level of a strong
-undergraduate, and no prior knowledge of homomorphic encryption. Every number in it was measured
-on the system described; the scripts that produced them are in the repository.*
+undergraduate, and no prior knowledge of homomorphic encryption. Every precision, performance and
+load figure in it was measured on the system described, and the tables are generated from those
+measurements by scripts in the repository. Security bounds are quoted from the cited standard.*
 
 ## 1. The problem
 
@@ -123,8 +124,8 @@ cheating probabilistically; it is not a proof of correct computation, and the th
 ## 4. Precision: what "approximately equal" means
 
 CKKS results are approximate, so "correct" needs a definition. For inputs **x**, plaintext
-arguments **a** and exact result **y**, let M = max(1, |**x**|_∞, |**a**|_∞, |**y**|_∞). We call a
-result correct when |result − **y**|_∞ ≤ M·2^(−b), where b is the **precision in bits** for the
+arguments **a** and exact result **y**, let M = max(1, |**x**|∞, |**a**|∞, |**y**|∞). We call a
+result correct when |result − **y**|∞ ≤ M·2⁻ᵇ, where b is the **precision in bits** for the
 parameter set at the depth the computation consumed.
 
 Instead of quoting a theoretical bound, CipherCompute *measures* b: a calibration script runs every
@@ -153,11 +154,20 @@ standard set:
 
 {{PRECISION_TABLE}}
 
-Two consequences. First, sums and means have an *absolute* noise floor that does not shrink with
-the data: at N = 8192 and 128-bit security it is about 2⁻¹⁴–2⁻¹⁸, ample for vital signs but not for
-quantities that need six significant digits. Second, the 192- and 256-bit sets at N = 8192 retain
-only a few bits after a sum — the security margin is paid for in precision. The parameter advisor
-accepts a minimum precision and moves to N = 16384 when it is needed.
+These are deliberately pessimistic numbers. Each is the worst case over many key rings and input
+patterns (all-zero and constant vectors included), relative to the largest magnitude involved,
+minus a further 4 bits. Typical errors are several bits better. They are still the numbers a
+client can rely on, and three consequences follow.
+
+First, slot-wise work is cheap in precision: the balanced N = 8192, 128-bit set keeps 22 bits
+fresh and 18 after a multiplication. Second, anything that rotates — sums, means, dot products,
+variances — sits on an absolute floor of about 2⁻¹⁴ of the largest magnitude at that set. That
+is ample for vital signs, but not for quantities that need six significant digits. Third, higher
+security is paid for in precision. The 192- and 256-bit sets keep 0–4 bits after a rotation at
+N = 8192, and at most 7 at N = 16384. The parameter advisor accepts a minimum precision and
+refuses, naming the reason, when no standard set provides it. For rotation-heavy statistics
+where precision matters, 128-bit security at N = 8192 or N = 16384 is the practical choice. The
+case study in §6 lays its data out by column so that its regression stays slot-wise.
 
 ## 5. Performance
 
