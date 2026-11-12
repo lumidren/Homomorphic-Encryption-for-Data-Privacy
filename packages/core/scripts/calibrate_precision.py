@@ -4,18 +4,21 @@ Usage::
 
     python scripts/calibrate_precision.py [--heavy] [--trials N] [--out path]
 
-For each preset (N=32768 only with ``--heavy``) the script generates a key ring, runs every
-registered operation on random inputs drawn within ``recommended_input_bound``, and records
-``max|got - expected| / M`` grouped by the number of levels the output consumed (see
-``ciphercompute_core.precision`` for the error model). The stored precision is
-``floor(-log2(worst)) - CALIBRATION_MARGIN_BITS``.
+For each preset (N=32768 only with ``--heavy``) the script generates several key rings, runs
+every registered operation on random, zero and constant inputs within
+``recommended_input_bound``, and records ``max|got - expected| / M`` per precision class
+(``slotwise`` / ``rotations``) and per number of levels consumed (see
+``ciphercompute_core.precision`` for the error model).
+
+Each preset is measured in its own subprocess: SEAL's memory pool never returns memory to the
+operating system, so measuring many large rings in one process eventually fails to allocate.
 """
 
 from __future__ import annotations
 
 import argparse
 import json
-import math
+import subprocess
 import sys
 import time
 from pathlib import Path
@@ -26,15 +29,32 @@ from ciphercompute_core import EncryptedVector, KeyRing, all_presets, apply_oper
 from ciphercompute_core.budget import plan
 from ciphercompute_core.errors import DepthExhaustedError
 from ciphercompute_core.ops import OPERATIONS
-from ciphercompute_core.precision import CALIBRATION_MARGIN_BITS, recommended_input_bound, table_key
+from ciphercompute_core.precision import (
+    PRECISION_CLASSES,
+    bits_from_worst_error,
+    magnitude_class,
+    recommended_input_bound,
+    table_key,
+)
 from ciphercompute_core.sigmoid import SUPPORTED_DEGREES
 
 LENGTH = 32
 
 
-def cases(rng: np.random.Generator, bound: float) -> list[tuple[str, list[np.ndarray], dict]]:
-    """One random instance of every operation (and variant) within the safe input bound."""
-    u = lambda n, b=bound: rng.uniform(-b, b, n)
+def cases(rng: np.random.Generator, bound: float, pattern: str = "uniform") -> list[tuple[str, list[np.ndarray], dict]]:
+    """One instance of every operation (and variant) within the safe input bound.
+
+    ``pattern`` shapes the encrypted inputs: random values, all zeros, or a constant. Zeros and
+    constants expose the absolute noise floor that random data averages away.
+    """
+
+    def u(n: int, b: float = bound) -> np.ndarray:
+        if pattern == "zeros":
+            return np.zeros(n)
+        if pattern == "constant":
+            return np.full(n, b)
+        return rng.uniform(-b, b, n)
+
     out: list[tuple[str, list[np.ndarray], dict]] = [
         ("vector_add", [u(LENGTH), u(LENGTH), u(LENGTH)], {}),
         ("scalar_multiply", [u(LENGTH)], {"scalar": float(rng.uniform(-bound, bound))}),
@@ -73,15 +93,32 @@ def cases(rng: np.random.Generator, bound: float) -> list[tuple[str, list[np.nda
     return out
 
 
-def calibrate(params, trials: int, rng: np.random.Generator) -> dict:
-    t0 = time.time()
-    ring = KeyRing.generate(params)
+def default_rings(params) -> int:
+    """Key rings to sample. The noise floor varies 10-100x between fresh key rings with identical
+    parameters, so one ring is never enough; larger rings are expensive, so they get fewer."""
+    return {8192: 12, 16384: 4}.get(params.poly_modulus_degree, 2)
+
+
+def measure_ring(
+    params,
+    ring: KeyRing,
+    trials: int,
+    rng: np.random.Generator,
+    bound: float,
+    worst: dict[str, dict[int, float]],
+    skipped: set[str],
+) -> int:
+    """Run every operation on one key ring; fold worst errors into ``worst[class][level]``.
+
+    Returns the size of the ring's public bundle.
+    """
     bundle = ring.public_bundle()
-    bound = min(100.0, recommended_input_bound(params, LENGTH))
-    worst: dict[int, float] = {}
-    skipped: set[str] = set()
-    for _ in range(trials):
-        for name, xs, args in cases(rng, bound):
+    # Large inputs measure relative error; tiny, zero and constant inputs measure the absolute noise
+    # floor (rotations, key switching), which does not shrink with the data.
+    settings = [(bound, "uniform"), (1.0, "uniform"), (1e-3, "uniform"), (bound, "zeros"), (1.0, "constant")]
+    for trial in range(trials):
+        magnitude, pattern = settings[trial % len(settings)]
+        for name, xs, args in cases(rng, magnitude, pattern):
             try:
                 plan(params, [(name, args)], input_lengths=[len(x) for x in xs])
             except DepthExhaustedError:
@@ -89,22 +126,25 @@ def calibrate(params, trials: int, rng: np.random.Generator) -> dict:
                 continue
             inputs = [EncryptedVector.encrypt(bundle, x) for x in xs]
             out = apply_operation(name, bundle, inputs, args)
-            got = ring.decrypt(out)
             spec = OPERATIONS[name]
-            expected = spec.reference(xs, spec.normalize([len(x) for x in xs], args))
-            arg_mag = max(
-                [abs(float(v)) for v in np.ravel([args.get("scalar", 0.0)])]
-                + [float(np.max(np.abs(args[k]))) for k in ("weights", "matrix") if k in args]
-                + [0.0]
-            )
-            magnitude = max(1.0, max(float(np.max(np.abs(x))) for x in xs), float(np.max(np.abs(expected))), arg_mag)
-            err = float(np.max(np.abs(got - expected))) / magnitude
-            level = out.levels_consumed
-            worst[level] = max(worst.get(level, 0.0), err)
-    levels = {
-        str(k): int(math.floor(-math.log2(v)) - CALIBRATION_MARGIN_BITS) if v > 0 else 60
-        for k, v in sorted(worst.items())
-    }
+            normalized = spec.normalize([len(x) for x in xs], args)
+            expected = spec.reference(xs, normalized)
+            err = float(np.max(np.abs(ring.decrypt(out) - expected))) / magnitude_class(xs, args, expected)
+            per_level = worst[spec.precision_class(normalized)]
+            per_level[out.levels_consumed] = max(per_level.get(out.levels_consumed, 0.0), err)
+    return bundle.size_bytes
+
+
+def calibrate(params, trials: int, rng: np.random.Generator, rings: int | None = None) -> dict:
+    t0 = time.time()
+    rings = rings or default_rings(params)
+    bound = min(100.0, recommended_input_bound(params, LENGTH))
+    worst: dict[str, dict[int, float]] = {c: {} for c in PRECISION_CLASSES}
+    skipped: set[str] = set()
+    bundle_bytes = 0
+    for _ in range(rings):
+        bundle_bytes = measure_ring(params, KeyRing.generate(params), trials, rng, bound, worst, skipped)
+    bits = {c: {str(k): bits_from_worst_error(v) for k, v in sorted(levels.items())} for c, levels in worst.items()}
     entry = {
         "poly_modulus_degree": params.poly_modulus_degree,
         "security_level": int(params.security_level),
@@ -112,21 +152,23 @@ def calibrate(params, trials: int, rng: np.random.Generator) -> dict:
         "scale_bits": params.scale_bits,
         "input_bound": bound,
         "vector_length": LENGTH,
-        "trials": trials,
-        "worst_normalized_error": {str(k): v for k, v in sorted(worst.items())},
-        "levels": levels,
+        "key_rings": rings,
+        "trials_per_ring": trials,
+        "worst_normalized_error": {c: {str(k): v for k, v in sorted(levels.items())} for c, levels in worst.items()},
+        "precision_bits": bits,
         "skipped_as_too_deep": sorted(skipped),
-        "public_bundle_bytes": bundle.size_bytes,
+        "public_bundle_bytes": bundle_bytes,
         "seconds": round(time.time() - t0, 1),
     }
-    print(f"{params.describe():70s} levels={levels} skipped={sorted(skipped)} ({entry['seconds']}s)", flush=True)
+    print(f"{params.describe():70s} rings={rings} bits={bits} ({entry['seconds']}s)", file=sys.stderr, flush=True)
     return entry
 
 
 def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--heavy", action="store_true", help="include N=32768 (several GB of RAM, minutes per set)")
-    ap.add_argument("--trials", type=int, default=5)
+    ap.add_argument("--trials", type=int, default=10, help="trials per key ring")
+    ap.add_argument("--rings", type=int, default=None, help="key rings per preset (default: 12/4/2 by ring size)")
     ap.add_argument(
         "--out",
         type=Path,
@@ -135,22 +177,33 @@ def main() -> int:
     ap.add_argument(
         "--only", type=str, default=None, help="comma-separated substrings; only matching preset keys are re-measured"
     )
+    ap.add_argument("--single", type=str, default=None, help=argparse.SUPPRESS)  # internal: one preset, JSON on stdout
     ns = ap.parse_args()
-    rng = np.random.default_rng(2026)
-    table: dict = {}
-    if ns.out.exists():
-        table = json.loads(ns.out.read_text(encoding="utf-8"))
-    current_keys = {table_key(p) for _, p in all_presets()}
-    table = {k: v for k, v in table.items() if k in current_keys}  # drop retired presets
-    for profile, params in all_presets():
+
+    presets = {table_key(p): (profile, p) for profile, p in all_presets()}
+    if ns.single:
+        profile, params = presets[ns.single]
+        entry = calibrate(params, ns.trials, np.random.default_rng(abs(hash(ns.single)) % 2**32), ns.rings)
+        entry["profile"] = profile
+        print(json.dumps(entry))
+        return 0
+
+    table: dict = json.loads(ns.out.read_text(encoding="utf-8")) if ns.out.exists() else {}
+    table = {k: v for k, v in table.items() if k in presets}  # drop retired presets
+    for key, (_, params) in presets.items():
         if params.poly_modulus_degree == 32768 and not ns.heavy:
             continue
-        key = table_key(params)
         if ns.only and not any(fragment in key for fragment in ns.only.split(",")):
             continue
-        entry = calibrate(params, ns.trials, rng)
-        entry["profile"] = profile
-        table[key] = entry
+        argv = [sys.executable, __file__, "--single", key, "--trials", str(ns.trials)]
+        if ns.rings:
+            argv += ["--rings", str(ns.rings)]
+        result = subprocess.run(argv, capture_output=True, text=True, check=False)
+        sys.stderr.write(result.stderr)
+        if result.returncode != 0:
+            print(f"calibration of {key} failed (exit {result.returncode})", file=sys.stderr)
+            return 1
+        table[key] = json.loads(result.stdout.strip().splitlines()[-1])
         ns.out.write_text(json.dumps(table, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     print(f"wrote {ns.out}")
     return 0
