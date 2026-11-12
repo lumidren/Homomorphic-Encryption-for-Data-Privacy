@@ -321,6 +321,23 @@ balanced N=8192 sets (2 levels). `budget.plan()` refuses it with the exact set t
 
 `packages/core/src/ciphercompute_core/data/precision_table.json` holds, for every preset and
 every level, the worst normalised error measured by `scripts/calibrate_precision.py`
-(see `precision.py` for the error model). Representative values at N=8192, 128-bit, balanced:
-25 usable bits fresh, 20 after one multiplication, 18 after two. The property-based tests use
-exactly these bounds as tolerances, and the whitepaper reports the full table.
+(see `precision.py` for the error model). The property-based tests use exactly these bounds as
+tolerances, and the whitepaper reports the full table.
+
+**Precision depends on the key ring, not only on the parameters.** Hypothesis found failures that
+the first calibration missed; tracing them showed that the absolute noise floor of rotation-heavy
+operations (`sum`, `mean`, `dot_product` — 12 rotations each at N=8192) differs by 14-26x between
+fresh key rings with identical parameters, with outliers near 100x. A bound measured on one ring is
+therefore not a bound. Calibration now samples 12 key rings per N=8192 set and 4 per N=16384 set,
+includes all-zero and constant inputs (the cases that expose the floor), and keeps a 16x margin
+over the worst case observed. Practical consequence: the low-precision sets (192/256-bit at
+N=8192) have only a few usable bits after a `sum`; the advisor's `min_precision_bits` option steers
+clients to N=16384 when they need more.
+
+Precision is kept **per operation class**. Slot-wise operations (add, multiply, element-wise and
+feature-major regression) never key-switch; rotating operations (sum, mean, dot product, variance,
+matrix-vector, sample-major regression) carry the key-switching floor. At N=8192/128-bit balanced
+the measured, margin-adjusted figures are 22/18 bits slot-wise and 14 bits rotating. A job's depth
+report states which class applies. Because a computation at depth L may contain any operation
+measured at a shallower depth (a variance contains a sum), the bound reported at L is the worst
+measurement at or below L, and an unmeasured level in between is bounded by its neighbours.
