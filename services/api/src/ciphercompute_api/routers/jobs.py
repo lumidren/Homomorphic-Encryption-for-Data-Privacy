@@ -36,8 +36,6 @@ TERMINAL = {JobStatus.SUCCEEDED, JobStatus.FAILED, JobStatus.CANCELLED}
 SSE_MAX_SECONDS = 600
 
 
-
-
 async def _load_inputs(
     tenant: TenantScopedSession, project_id: uuid.UUID, ids: list[uuid.UUID]
 ) -> tuple[list[Ciphertext], KeyBundle]:
