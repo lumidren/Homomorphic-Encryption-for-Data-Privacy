@@ -1,0 +1,13 @@
+# Registers ingress-nginx controller pods into the Terraform-managed ALB target group
+# (output: ingress_target_group_arn). Requires the AWS Load Balancer Controller.
+apiVersion: elbv2.k8s.aws/v1beta1
+kind: TargetGroupBinding
+metadata:
+  name: ciphercompute-ingress
+  namespace: ingress-nginx
+spec:
+  serviceRef:
+    name: ingress-nginx-controller
+    port: 443
+  targetGroupARN: REPLACE_WITH_ingress_target_group_arn
+  targetType: ip

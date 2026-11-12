@@ -1,0 +1,5 @@
+bucket         = "ciphercompute-terraform-state"
+key            = "ciphercompute/staging.tfstate"
+region         = "us-east-1"
+dynamodb_table = "ciphercompute-terraform-locks"
+encrypt        = true

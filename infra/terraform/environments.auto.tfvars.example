@@ -1,0 +1,7 @@
+# Copy to <env>.tfvars and pass with -var-file. No secrets belong here.
+environment         = "staging"
+region              = "us-east-1"
+api_domain          = "api.staging.ciphercompute.example.com"
+dashboard_domain    = "app.staging.ciphercompute.example.com"
+acm_certificate_arn = "arn:aws:acm:us-east-1:111122223333:certificate/00000000-0000-0000-0000-000000000000"
+alarm_email         = "oncall@example.com"
