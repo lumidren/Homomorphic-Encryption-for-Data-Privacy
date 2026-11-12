@@ -180,3 +180,14 @@ def test_audit_verify_exit_code(cli_env: Stack, monkeypatch: pytest.MonkeyPatch)
     monkeypatch.setattr(cli, "make_client", Broken)
     result = runner.invoke(cli.app, ["audit", "verify"])
     assert result.exit_code == 1 and "first_broken_seq" in result.output
+
+
+def test_insecure_http_env_only_applies_to_localhost(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("CC_INSECURE_HTTP", "1")
+    runner.invoke(cli.app, ["--json", "operations"])  # sets global state; the call itself fails (no server)
+    assert cli.state.transport.allow_insecure_http is True
+    from ciphercompute_client.transport import check_base_url
+
+    assert check_base_url("http://127.0.0.1:8000", cli.state.transport) == "http://127.0.0.1:8000"
+    with pytest.raises(ValueError, match="https"):
+        check_base_url("http://api.example.com", cli.state.transport)

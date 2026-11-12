@@ -149,13 +149,19 @@ def main_options(
     ca_file: Annotated[str | None, typer.Option(help="Extra CA bundle for a private PKI.")] = None,
     client_cert: Annotated[str | None, typer.Option(help="Client certificate (PEM) for mutual TLS.")] = None,
     client_key: Annotated[str | None, typer.Option(help="Client private key (PEM) for mutual TLS.")] = None,
-    insecure_http: Annotated[bool, typer.Option(help="Allow http:// to localhost (development only).")] = False,
+    insecure_http: Annotated[
+        bool, typer.Option(help="Allow http:// to localhost (development only; or CC_INSECURE_HTTP=1).")
+    ] = False,
     json_output: Annotated[bool, typer.Option("--json", help="Machine-readable output.")] = False,
 ) -> None:
     state.server = server
     state.output_json = json_output
     state.transport = TransportConfig(
-        ca_file=ca_file, client_cert=client_cert, client_key=client_key, allow_insecure_http=insecure_http
+        ca_file=ca_file,
+        client_cert=client_cert,
+        client_key=client_key,
+        # still refused for anything but localhost (transport.check_base_url)
+        allow_insecure_http=insecure_http or os.environ.get("CC_INSECURE_HTTP") == "1",
     )
 
 
