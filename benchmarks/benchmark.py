@@ -171,23 +171,24 @@ def markdown(results: list[dict[str, Any]], host: dict[str, Any]) -> str:
             f"| {p['poly_modulus_degree']} | {p['security_level']} | {r['profile']} | {r['depth']} | {r['slots']} | {r['keygen_seconds']} s | "
             f"{r['public_bundle_mb']} MB | {r['ciphertext_kb']} KB | {r['encrypt_ms']} ms | {r['decrypt_ms']} ms | {r['precision_bits_fresh']['slotwise']} / {r['precision_bits_fresh']['rotations']} bits |"
         )
+    # One table per ring dimension, operations as rows: narrow enough for a printed page.
     op_names = list(results[0]["operations"])
-    lines += [
-        "",
-        "Operation latency (milliseconds; `—` = refused, not enough depth):",
-        "",
-        "| N / security / profile | " + " | ".join(op_names) + " |",
-        "|---" * (len(op_names) + 1) + "|",
-    ]
-    for r in results:
-        p = r["params"]
-        cells = []
+    for degree in sorted({r["params"]["poly_modulus_degree"] for r in results}):
+        group = [r for r in results if r["params"]["poly_modulus_degree"] == degree]
+        heads = [f"{r['params']['security_level']}-bit {r['profile']}" for r in group]
+        lines += [
+            "",
+            f"Operation latency at N = {degree} (milliseconds; `—` = refused, not enough depth):",
+            "",
+            "| operation | " + " | ".join(heads) + " |",
+            "|---" * (len(heads) + 1) + "|",
+        ]
         for name in op_names:
-            sec = r["operations"][name]["seconds"]
-            cells.append("—" if sec is None else f"{sec * 1e3:.1f}")
-        lines.append(
-            f"| {p['poly_modulus_degree']} / {p['security_level']} / {r['profile']} | " + " | ".join(cells) + " |"
-        )
+            cells = []
+            for r in group:
+                sec = r["operations"][name]["seconds"]
+                cells.append("—" if sec is None else f"{sec * 1e3:.1f}")
+            lines.append(f"| {name} | " + " | ".join(cells) + " |")
     return "\n".join(lines) + "\n"
 
 
