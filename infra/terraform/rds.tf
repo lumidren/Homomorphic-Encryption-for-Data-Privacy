@@ -58,14 +58,14 @@ resource "aws_db_instance" "main" {
   skip_final_snapshot       = var.environment != "prod"
   final_snapshot_identifier = "${local.name}-final"
 
-  performance_insights_enabled          = true
-  performance_insights_kms_key_id       = aws_kms_key.main.arn
-  monitoring_interval                   = 60
-  monitoring_role_arn                   = aws_iam_role.rds_monitoring.arn
-  enabled_cloudwatch_logs_exports       = ["postgresql", "upgrade"]
-  auto_minor_version_upgrade            = true
-  iam_database_authentication_enabled   = true
-  apply_immediately                     = false
+  performance_insights_enabled        = true
+  performance_insights_kms_key_id     = aws_kms_key.main.arn
+  monitoring_interval                 = 60
+  monitoring_role_arn                 = aws_iam_role.rds_monitoring.arn
+  enabled_cloudwatch_logs_exports     = ["postgresql", "upgrade"]
+  auto_minor_version_upgrade          = true
+  iam_database_authentication_enabled = true
+  apply_immediately                   = false
 }
 
 resource "aws_iam_role" "rds_monitoring" {
