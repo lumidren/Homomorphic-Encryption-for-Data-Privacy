@@ -37,7 +37,7 @@ from ciphercompute_api.db.models import (
 from ciphercompute_api.db.tenancy import TenantScopedSession
 from ciphercompute_api.logging import get_logger
 from ciphercompute_api.storage.objects import ObjectStore
-from ciphercompute_core import CKKSParams, EncryptedVector, PublicKeyBundle, apply_operation, plan
+from ciphercompute_core import CKKSParams, EncryptedVector, PublicKeyBundle, apply_operation, get_operation, plan
 from ciphercompute_core.errors import CipherComputeError
 
 from .concurrency import TenantSemaphore, job_weight
@@ -373,5 +373,5 @@ async def _compute(ctx: WorkerContext, job_id: uuid.UUID, org_id: uuid.UUID, par
         "result_fingerprint": sha256_fingerprint(payload),
         "result_length": out.length,
         "result_size_bytes": len(payload),
-        "depth_report": out.depth_report().to_dict(),
+        "depth_report": out.depth_report(get_operation(operation).precision_class(args)).to_dict(),
     }
