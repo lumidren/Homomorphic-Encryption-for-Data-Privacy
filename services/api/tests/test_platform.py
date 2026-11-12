@@ -206,3 +206,15 @@ async def test_openapi_documents_every_route(h: Harness) -> None:
     assert job_schema.get("examples")
     docs = await h.client.get("/docs")
     assert docs.status_code == 200 and "swagger" in docs.text.lower()
+
+
+async def test_no_plaintext_result_endpoint(h: Harness) -> None:
+    # TM:I-8 - a decryption oracle needs a channel that carries decrypted values to the service.
+    # No route may be about decryption, and no request body may accept result values.
+    spec = (await h.client.get("/openapi.json")).json()
+    forbidden = ("decrypt", "plaintext", "cleartext")
+    for path in spec["paths"]:
+        assert not any(word in path.lower() for word in forbidden), path
+    for name, schema in spec["components"]["schemas"].items():
+        properties = {p.lower() for p in schema.get("properties", {})}
+        assert not properties & {"values", "decrypted", "plaintext", "result_values"}, name
