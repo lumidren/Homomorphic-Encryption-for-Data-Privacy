@@ -1,0 +1,59 @@
+{
+  "description": "Logistic regression for 10-year cardiovascular event risk, trained on SYNTHETIC data only.",
+  "features": [
+    "age",
+    "systolic_bp",
+    "total_cholesterol",
+    "hdl_cholesterol",
+    "bmi",
+    "smoker",
+    "diabetic"
+  ],
+  "standardization": {
+    "mean": [
+      54.934214,
+      118.121643,
+      206.608143,
+      52.098929,
+      27.435714,
+      0.178571,
+      0.098571
+    ],
+    "std": [
+      10.893299,
+      15.994439,
+      36.747469,
+      13.294773,
+      4.702983,
+      0.382993,
+      0.298086
+    ]
+  },
+  "weights": [
+    1.059231,
+    0.60363,
+    0.228568,
+    -0.513534,
+    0.429673,
+    0.763876,
+    0.602546
+  ],
+  "intercept": -2.123805,
+  "sigmoid_degree": 3,
+  "training": {
+    "patients": 1400,
+    "event_rate": 0.2007
+  },
+  "evaluation": {
+    "test_auc_exact_sigmoid": 0.8612,
+    "logit_range": [
+      -7.229,
+      3.326
+    ],
+    "logits_within_domain": true,
+    "test_auc_poly_deg3": 0.8612,
+    "max_abs_score_change_deg3": 0.0984,
+    "test_auc_poly_deg5": 0.8611,
+    "max_abs_score_change_deg5": 0.0471
+  }
+}
