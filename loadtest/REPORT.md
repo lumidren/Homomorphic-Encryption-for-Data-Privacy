@@ -7,7 +7,10 @@ to this file: `results/run_stats.csv`, `results/run_stats_history.csv`, `results
 
 At **N = 8192, 128-bit security (balanced, scale 2^40)**, 20 simulated analysts sharing one
 organisation submitted `mean`, `dot_product` and `variance` jobs over full-width ciphertexts
-(4,096 slots, 332 KB each) for 5 minutes, each keeping at most 4 jobs in flight.
+(4,096 slots, 332 KB each) for 5 minutes, each keeping at most 4 jobs in flight. The system
+under test was the single-process local stack (real API and job executor with 4 executors;
+SQLite, fakeredis and a local S3 server) on one 20-thread laptop that also ran the load
+generator. The production topology was not measured (details in the full report).
 
 | metric | result |
 |---|---|
