@@ -64,6 +64,10 @@ def find_markers() -> dict[str, list[tuple[str, int]]]:
             for number, line in enumerate(lines, 1):
                 for match in MARKER_RE.finditer(line):
                     found[match.group(1)].append((path.relative_to(ROOT).as_posix(), number))
+    # rglob order is filesystem-dependent; sort so Linux CI and a Windows checkout agree.
+    order = {base: i for i, base in enumerate(SCAN_DIRS)}
+    for sites in found.values():
+        sites.sort(key=lambda site: (order[site[0].split("/", 1)[0]], site[0], site[1]))
     return found
 
 
