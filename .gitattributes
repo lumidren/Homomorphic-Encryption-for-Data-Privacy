@@ -1,0 +1,6 @@
+# Normalise line endings: the repository is developed on Windows and Linux.
+* text=auto eol=lf
+*.sh text eol=lf
+*.pdf binary
+*.png binary
+*.ico binary
