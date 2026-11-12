@@ -30,19 +30,30 @@ LOADTEST = ROOT / "loadtest" / "REPORT.md"
 def precision_table() -> str:
     sys.path.insert(0, str(ROOT / "packages" / "core" / "src"))
     from ciphercompute_core.params import all_presets
-    from ciphercompute_core.precision import bits_from_worst_error, table_key
+    from ciphercompute_core.precision import table_key
 
     table = json.loads(TABLE.read_text(encoding="utf-8"))
-    rows = ["| N | security | profile | primes | levels | bits after 0, 1, 2, … levels | key rings |", "|---|---|---|---|---|---|---|"]
+    rows = [
+        "| N | security | profile | primes | levels | slot-wise ops: bits at level 0, 1, … "
+        "| rotating ops: bits at level 0, 1, … | key rings |",
+        "|---|---|---|---|---|---|---|---|",
+    ]
+
+    def by_level(bits: dict[str, int], depth: int) -> str:
+        # A level the class never reached during calibration is shown as "n/a", not extrapolated.
+        return " · ".join(str(bits.get(str(level), "n/a")) for level in range(depth + 1))
+
     for profile, params in all_presets():
         entry = table.get(table_key(params))
         if entry is None:
             continue
-        worst = entry["worst_normalized_error"]
-        bits = " · ".join(str(bits_from_worst_error(float(worst[k]))) for k in sorted(worst, key=int))
+        bits = entry["precision_bits"]
+        slotwise = by_level(bits.get("slotwise", {}), params.depth)
+        rotations = by_level(bits.get("rotations", {}), params.depth)
         rows.append(
-            f"| {params.poly_modulus_degree} | {int(params.security_level)} | {profile} | {list(params.coeff_mod_bit_sizes)} | "
-            f"{params.depth} | {bits} | {entry.get('key_rings', 1)} |"
+            f"| {params.poly_modulus_degree} | {int(params.security_level)} | {profile} | "
+            f"{list(params.coeff_mod_bit_sizes)} | {params.depth} | {slotwise} | {rotations} | "
+            f"{entry.get('key_rings', 1)} |"
         )
     return "\n".join(rows)
 

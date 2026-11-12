@@ -139,7 +139,15 @@ operations (sum, mean, dot product — 12 rotations each at N = 8192) varies by 
 key rings with identical parameters, with outliers near 100×. A precision bound measured on one
 key is not a bound. Calibration now samples 12 key rings per N = 8192 set and 4 per N = 16384 set.
 
-The measured precision per level (bits) for each standard set:
+The same data showed that one number per level is too coarse. Slot-wise operations (add, multiply,
+element-wise products, regression on feature-major layouts) never key-switch, and their error is
+set by the scale; rotating operations (sum, mean, dot product, variance, matrix-vector) pay the
+key-switching noise floor at every level. Precision is therefore recorded per class, and every job
+reports the class that applies to the operations it ran. Levels a class never reaches in the
+calibration run are shown as n/a in the table rather than extrapolated.
+
+The measured precision per level (bits, after the 4-bit margin; 0 = no usable precision) for each
+standard set:
 
 {{PRECISION_TABLE}}
 
