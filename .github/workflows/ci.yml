@@ -44,7 +44,9 @@ jobs:
         working-directory: packages/core
         env:
           CC_PROPERTY_EXAMPLES: "15"
-        run: ../../.venv/bin/pytest --cov=ciphercompute_core --cov-report=xml --cov-fail-under=100
+        # One process per N=16384 set: SEAL's memory pool never shrinks, so a single process holding
+        # every large key ring runs out of memory. Coverage is merged and gated at 100% at the end.
+        run: ../../.venv/bin/python scripts/run_suite.py && ../../.venv/bin/python -m coverage xml
       - uses: actions/upload-artifact@v4
         with: { name: coverage-core, path: packages/core/coverage.xml }
 

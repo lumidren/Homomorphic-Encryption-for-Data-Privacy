@@ -23,7 +23,9 @@ uv pip install --python .venv ruff mypy bandit pip-audit
 ## Running the tests
 
 ```bash
-cd packages/core && pytest                       # all 8192 and 16384 presets (~5 min)
+cd packages/core && python scripts/run_suite.py   # all 8192 and 16384 presets, one process per
+                                                  # large set, merged coverage gated at 100%
+pytest -k "not N16384 and not N32768"            # quick loop: unit tests + N=8192 presets
 CC_TEST_HEAVY=1 pytest -m heavy                  # N=32768 presets: several GB of RAM
 CC_PROPERTY_EXAMPLES=50 pytest tests/test_properties.py   # more Hypothesis examples
 pytest --cov --cov-report=term-missing           # crypto modules must stay at 100%
