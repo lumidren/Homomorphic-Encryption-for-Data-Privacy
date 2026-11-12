@@ -69,6 +69,7 @@ def test_wrong_passphrase_and_tampering(tmp_path: Path) -> None:
     blob[HEADER_LEN + 10] ^= 1
     secret.unlink()
     secret.write_bytes(bytes(blob))
+    secret.chmod(0o600)  # keep the permission check satisfied so the integrity check is what fires
     with pytest.raises(KeyStoreError, match="modified"):
         KeyStore.open(tmp_path / "ring", passphrase=PASS)
 
