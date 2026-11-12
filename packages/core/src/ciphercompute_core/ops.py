@@ -13,7 +13,7 @@ from __future__ import annotations
 
 import math
 from collections.abc import Callable, Mapping, Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from typing import Any, Final
 
 import numpy as np
@@ -44,6 +44,9 @@ class OperationSpec:
     reference: Reference
     reveals: tuple[str, ...]
     """Plaintext argument names the server can see."""
+    rotations: Callable[[Args], bool] = field(default=lambda a: False)
+    """Whether the operation rotates slots (Galois key switching). Rotations add a noise floor that
+    does not shrink with the data, so precision is calibrated and reported per class."""
 
     def describe(self) -> dict[str, Any]:
         return {
@@ -52,7 +55,11 @@ class OperationSpec:
             "min_inputs": self.min_inputs,
             "max_inputs": self.max_inputs,
             "reveals": list(self.reveals),
+            "precision_class": "rotations" if self.rotations({"layout": "sample"}) else "slotwise",
         }
+
+    def precision_class(self, args: Args) -> str:
+        return "rotations" if self.rotations(args) else "slotwise"
 
 
 OPERATIONS: dict[str, OperationSpec] = {}
@@ -250,6 +257,7 @@ _register(
         max_inputs=2,
         normalize=_dot_normalize,
         depth_cost=lambda a: 1,
+        rotations=lambda a: True,
         output_length=lambda lengths, a: 1,
         apply=lambda b, inputs, a: inputs[0].spawn(inputs[0].raw().dot(inputs[1].raw()), 1),
         reference=lambda xs, a: np.array([float(np.dot(xs[0], xs[1]))]),
@@ -273,6 +281,7 @@ _register(
         max_inputs=1,
         normalize=_sum_normalize,
         depth_cost=lambda a: 0,
+        rotations=lambda a: True,
         output_length=lambda lengths, a: 1,
         apply=lambda b, inputs, a: inputs[0].spawn(inputs[0].raw().sum(), 1),
         reference=lambda xs, a: np.array([float(np.sum(xs[0]))]),
@@ -294,6 +303,7 @@ _register(
         max_inputs=1,
         normalize=_mean_normalize,
         depth_cost=lambda a: 1,
+        rotations=lambda a: True,
         output_length=lambda lengths, a: 1,
         apply=lambda b, inputs, a: inputs[0].spawn(inputs[0].raw().sum() * (1.0 / a["count"]), 1),
         reference=lambda xs, a: np.array([float(np.sum(xs[0]) / a["count"])]),
@@ -339,6 +349,7 @@ _register(
         max_inputs=1,
         normalize=_var_normalize,
         depth_cost=lambda a: 2,
+        rotations=lambda a: True,
         output_length=lambda lengths, a: 1,
         apply=_var_apply,
         reference=_var_reference,
@@ -374,6 +385,7 @@ _register(
         max_inputs=1,
         normalize=_wavg_normalize,
         depth_cost=lambda a: 1,
+        rotations=lambda a: True,
         output_length=lambda lengths, a: 1,
         apply=_wavg_apply,
         reference=lambda xs, a: np.array([float(np.dot(xs[0], a["weights"]) / np.sum(a["weights"]))]),
@@ -441,6 +453,7 @@ _register(
         max_inputs=None,
         normalize=lambda lengths, args: _regression_normalize("linear_regression", lengths, args, set()),
         depth_cost=lambda a: 1,
+        rotations=lambda a: a.get("layout", "sample") == "sample",
         output_length=_regression_output_length,
         apply=lambda b, inputs, a: inputs[0].spawn(
             _linear_raw(inputs, a), _regression_output_length([ev.length for ev in inputs], a)
@@ -475,6 +488,7 @@ _register(
         max_inputs=None,
         normalize=_logistic_normalize,
         depth_cost=lambda a: 1 + polyval_depth(a["degree"]),
+        rotations=lambda a: a.get("layout", "sample") == "sample",
         output_length=_regression_output_length,
         apply=_logistic_apply,
         reference=lambda xs, a: sigmoid_poly(_linear_reference(xs, a), a["degree"]),
@@ -501,6 +515,14 @@ def _matvec_apply(bundle: PublicKeyBundle, inputs: Sequence[EncryptedVector], ar
         raise InvalidArgumentError(
             f"matrix has {rows} rows but the parameter set offers {inputs[0].params.slots} slots"
         )
+    # Entries smaller than the encoding resolution encode to zero; left as tiny non-zeros they make
+    # SEAL multiply by an all-zero plaintext and fail ("transparent ciphertext"). Exact zeros are
+    # skipped by TenSEAL, so snap them, and an effectively-zero matrix yields an encrypted zero.
+    resolution = 2.0 ** -inputs[0].params.scale_bits
+    matrix = np.where(np.abs(matrix) < resolution, 0.0, matrix)
+    if not np.any(matrix):
+        zero = EncryptedVector.encrypt(bundle, np.zeros(rows))
+        return zero.spawn(zero.raw() * 1.0, rows)  # one level, like a real product
     # TenSEAL computes (row vector) x (matrix); A x == x^T A^T.
     out = inputs[0].raw().matmul(matrix.T.tolist())
     return inputs[0].spawn(out, rows)
@@ -514,6 +536,7 @@ _register(
         max_inputs=1,
         normalize=_matvec_normalize,
         depth_cost=lambda a: 1,
+        rotations=lambda a: True,
         output_length=lambda lengths, a: len(a["matrix"]),
         apply=_matvec_apply,
         reference=lambda xs, a: np.asarray(a["matrix"]) @ xs[0],
@@ -558,4 +581,11 @@ def apply_operation(
     # side effect of an operation.
     deepest = max(ev.levels_consumed for ev in inputs)
     protected = [ev.copy() if ev.levels_consumed < deepest else ev for ev in inputs]
-    return spec.apply(bundle, protected, normalized)
+    out = spec.apply(bundle, protected, normalized)
+    # A plaintext operand below the encoding resolution (e.g. a weight of 1e-300 at scale 2^40)
+    # encodes to zero, and TenSEAL then skips the rescale. Re-align with exact x1.0 rescales so
+    # the depth the planner promised is *exactly* the depth delivered — never less, never more.
+    expected = deepest + spec.depth_cost(normalized)
+    while out.levels_consumed < expected:
+        out = out.spawn(out.raw() * 1.0, out.length)
+    return out

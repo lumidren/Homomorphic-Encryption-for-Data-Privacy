@@ -93,9 +93,10 @@ def test_advise_can_require_precision() -> None:
     steps = [("logistic_regression", {"weights": [1.0], "degree": 3})]
     shallow = advise(steps, input_lengths=[1], security_level=192)
     assert shallow.params == standard_params(8192, 192, "deep")
-    precise = advise(steps, input_lengths=[1], security_level=192, min_precision_bits=12)
+    precise = advise(steps, input_lengths=[1], security_level=192, min_precision_bits=6)
     assert precise.params == standard_params(16384, 192)
-    assert precise.report.precision_bits >= 12
+    assert precise.report.precision_bits >= 6
+    assert precise.report.precision_class == "rotations"
     with pytest.raises(DepthExhaustedError, match="with at least 60 bits of precision"):
         advise(steps, input_lengths=[1], min_precision_bits=60)
 
@@ -124,4 +125,6 @@ def test_depth_report_dict() -> None:
         "levels_remaining",
         "precision_bits",
         "precision_measured",
+        "precision_class",
     }
+    assert DepthReport.for_params(P8192, 1, "slotwise").precision_class == "slotwise"

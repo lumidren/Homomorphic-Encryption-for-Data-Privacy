@@ -159,3 +159,29 @@ def test_variance_matches_numpy(small_ring: KeyRing, small_bundle: PublicKeyBund
     assert small_ring.decrypt(apply_operation("variance", small_bundle, [padded], {"count": 8}))[0] == pytest.approx(
         values.var(), abs=1e-4
     )
+
+
+def test_precision_classes() -> None:
+    rotating = {"dot_product", "sum", "mean", "variance", "weighted_average", "matvec_multiply"}
+    for spec in list_operations():
+        sample = spec.precision_class({"layout": "sample"})
+        assert sample == (
+            "rotations" if spec.name in rotating | {"linear_regression", "logistic_regression"} else "slotwise"
+        ), spec.name
+        assert spec.describe()["precision_class"] == sample
+    # batched (column-layout) regression never rotates
+    assert get_operation("linear_regression").precision_class({"layout": "columns"}) == "slotwise"
+    assert get_operation("logistic_regression").precision_class({"layout": "columns"}) == "slotwise"
+
+
+def test_matvec_entries_below_resolution(small_ring: KeyRing, small_bundle: PublicKeyBundle) -> None:
+    """Tiny entries used to make SEAL fail with 'result ciphertext is transparent'."""
+    x = EncryptedVector.encrypt(small_bundle, [1.0, 2.0, 3.0])
+    out = apply_operation(
+        "matvec_multiply", small_bundle, [x], {"matrix": [[1e-300, 0.0, 2.0], [1e-300, 1e-300, 1e-300]]}
+    )
+    assert out.levels_consumed == 1
+    assert small_ring.decrypt(out) == pytest.approx([6.0, 0.0], abs=1e-4)
+    zero = apply_operation("matvec_multiply", small_bundle, [x], {"matrix": [[1e-300, 1e-300, 1e-300]]})
+    assert zero.levels_consumed == 1 and zero.length == 1
+    assert small_ring.decrypt(zero) == pytest.approx([0.0], abs=1e-4)

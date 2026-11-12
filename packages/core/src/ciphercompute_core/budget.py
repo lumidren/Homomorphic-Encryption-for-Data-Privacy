@@ -32,10 +32,11 @@ class DepthReport:
     levels_remaining: int
     precision_bits: int
     precision_measured: bool
+    precision_class: str = "rotations"
 
     @classmethod
-    def for_params(cls, params: CKKSParams, levels_consumed: int) -> DepthReport:
-        bits, measured = precision_bits(params, levels_consumed)
+    def for_params(cls, params: CKKSParams, levels_consumed: int, precision_class: str = "rotations") -> DepthReport:
+        bits, measured = precision_bits(params, levels_consumed, precision_class)
         return cls(
             poly_modulus_degree=params.poly_modulus_degree,
             security_level=int(params.security_level),
@@ -45,6 +46,7 @@ class DepthReport:
             levels_remaining=params.depth - levels_consumed,
             precision_bits=bits,
             precision_measured=measured,
+            precision_class=precision_class,
         )
 
     def to_dict(self) -> dict[str, Any]:
@@ -57,6 +59,7 @@ class DepthReport:
             "levels_remaining": self.levels_remaining,
             "precision_bits": self.precision_bits,
             "precision_measured": self.precision_measured,
+            "precision_class": self.precision_class,
         }
 
 
@@ -66,6 +69,7 @@ class PlannedStep:
     cost: int
     levels_consumed_after: int
     output_length: int
+    rotations: bool = False
 
 
 @dataclass(frozen=True, slots=True)
@@ -88,6 +92,7 @@ class Plan:
                     "cost": s.cost,
                     "levels_consumed_after": s.levels_consumed_after,
                     "output_length": s.output_length,
+                    "rotations": s.rotations,
                 }
                 for s in self.steps
             ],
@@ -131,9 +136,14 @@ def _walk(
         cost = spec.depth_cost(normalized)
         level += cost
         out_len = spec.output_length(lengths, normalized)
-        planned.append(PlannedStep(spec.name, cost, level, out_len))
+        planned.append(PlannedStep(spec.name, cost, level, out_len, spec.rotations(normalized)))
         lengths = [out_len]
     return planned, level
+
+
+def chain_class(steps: Sequence[PlannedStep]) -> str:
+    """The precision class of a chain: ``rotations`` as soon as any step rotates."""
+    return "rotations" if any(s.rotations for s in steps) else "slotwise"
 
 
 def plan(
@@ -177,7 +187,7 @@ def plan(
             suggested_params=None if suggestion is None else suggestion[1].to_dict(),
             suggested_profile=None if suggestion is None else suggestion[0],
         )
-    report = DepthReport.for_params(params, required)
+    report = DepthReport.for_params(params, required, chain_class(planned))
     bound = recommended_input_bound(params, max(int(n) for n in input_lengths))
     return Plan(params, tuple(planned), report, bound)
 
@@ -213,7 +223,8 @@ def advise(
     """
     level = SecurityLevel(int(security_level))
     min_degree = int(min_poly_modulus_degree)
-    _, required = _walk(steps, input_lengths, 0)
+    walked, required = _walk(steps, input_lengths, 0)
+    precision_class = chain_class(walked)
     longest = max(int(n) for n in input_lengths)
     order: tuple[Profile, Profile] = ("balanced", "deep") if prefer == "balanced" else ("deep", "balanced")
     viable: list[tuple[Profile, CKKSParams]] = []
@@ -228,7 +239,7 @@ def advise(
             if candidate is None:
                 continue  # e.g. no deep profile exists at (8192, 256-bit)
             if candidate.depth >= required and longest <= candidate.slots:
-                bits, _ = precision_bits(candidate, required)
+                bits, _ = precision_bits(candidate, required, precision_class)
                 if bits >= min_precision_bits:
                     viable.append((profile, candidate))
     if not viable:
@@ -243,4 +254,5 @@ def advise(
             suggested_profile=None,
         )
     profile, chosen = viable[0]
-    return Advice(chosen, profile, required, DepthReport.for_params(chosen, required), tuple(viable[1:]))
+    report = DepthReport.for_params(chosen, required, precision_class)
+    return Advice(chosen, profile, required, report, tuple(viable[1:]))

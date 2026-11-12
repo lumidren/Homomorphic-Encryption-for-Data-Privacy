@@ -22,7 +22,7 @@ from ciphercompute_core import EncryptedVector, KeyRing, PublicKeyBundle, apply_
 from ciphercompute_core.budget import DepthExhaustedError
 from ciphercompute_core.ops import get_operation
 from ciphercompute_core.params import CKKSParams
-from ciphercompute_core.precision import recommended_input_bound, tolerance
+from ciphercompute_core.precision import magnitude_class, recommended_input_bound, tolerance
 
 MAX_EXAMPLES = int(os.environ.get("CC_PROPERTY_EXAMPLES", "10"))
 MAX_LEN = 32
@@ -163,17 +163,6 @@ CASES = [
 ]
 
 
-def _magnitude(xs: list[np.ndarray], args: dict[str, Any], expected: np.ndarray) -> float:
-    mags = [1.0, float(np.max(np.abs(expected)))] + [float(np.max(np.abs(x))) for x in xs]
-    for key in ("scalar", "intercept"):
-        if key in args:
-            mags.append(abs(float(args[key])))
-    for key in ("weights", "matrix"):
-        if key in args:
-            mags.append(float(np.max(np.abs(np.asarray(args[key])))))
-    return max(mags)
-
-
 @pytest.mark.parametrize("case", CASES, ids=[c.name for c in CASES])
 @settings(
     max_examples=MAX_EXAMPLES,
@@ -205,10 +194,10 @@ def test_decrypt_of_encrypted_op_matches_plaintext(
     assert out.length == spec.output_length(lengths, normalized)
     assert out.levels_consumed == spec.depth_cost(normalized)
 
-    magnitude = _magnitude(xs, args, expected)
-    tol = tolerance(params, out.levels_consumed, magnitude)
+    magnitude = magnitude_class(xs, args, expected)
+    tol = tolerance(params, out.levels_consumed, magnitude, spec.precision_class(normalized))
     err = float(np.max(np.abs(got - expected)))
     assert err <= tol, (
         f"{case.name} on {params.describe()}: error {err:.3e} exceeds tolerance {tol:.3e} "
-        f"(levels_consumed={out.levels_consumed}, magnitude={magnitude:.3g})"
+        f"(levels_consumed={out.levels_consumed}, class={spec.precision_class(normalized)}, magnitude={magnitude:.3g})"
     )

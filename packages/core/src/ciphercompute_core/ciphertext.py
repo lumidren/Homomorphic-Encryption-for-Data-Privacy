@@ -167,10 +167,10 @@ class EncryptedVector:
         # ``CKKSVector.scale()`` is not bound in TenSEAL 0.3.18; the SEAL ciphertext exposes it.
         return float(self._vector.ciphertext()[0].scale)
 
-    def depth_report(self) -> DepthReport:
+    def depth_report(self, precision_class: str = "rotations") -> DepthReport:
         from .budget import DepthReport
 
-        return DepthReport.for_params(self._params, self.levels_consumed)
+        return DepthReport.for_params(self._params, self.levels_consumed, precision_class)
 
     # ----- serialization ------------------------------------------------------------------
 
