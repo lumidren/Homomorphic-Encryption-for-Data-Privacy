@@ -104,7 +104,7 @@ jobs:
       - name: Start MinIO
         run: |
           docker run -d --name minio -p 9000:9000 --tmpfs /data:rw,uid=65532,gid=65532 \
-            -e MINIO_ROOT_USER=ci -e MINIO_ROOT_PASSWORD=ci-only-password \
+            -e MINIO_ROOT_USER=ci-user -e MINIO_ROOT_PASSWORD=ci-only-password \
             -e MINIO_KMS_SECRET_KEY=ci-key:$(openssl rand -base64 32) "$MINIO_IMAGE" server /data
           for i in $(seq 1 30); do curl -sf http://127.0.0.1:9000/minio/health/live && exit 0; sleep 2; done
           docker logs minio; exit 1
@@ -125,7 +125,7 @@ jobs:
           CC_IT_DATABASE_URL: postgresql+asyncpg://ciphercompute:ci-only-password@127.0.0.1:5432/ciphercompute
           CC_IT_REDIS_URL: redis://127.0.0.1:6379/0
           CC_IT_S3_ENDPOINT: http://127.0.0.1:9000
-          AWS_ACCESS_KEY_ID: ci
+          AWS_ACCESS_KEY_ID: ci-user
           AWS_SECRET_ACCESS_KEY: ci-only-password
         run: .venv/bin/pytest tests/integration -v
 
@@ -144,7 +144,7 @@ jobs:
       - name: Start MinIO
         run: |
           docker run -d --name minio -p 9000:9000 --tmpfs /data:rw,uid=65532,gid=65532 \
-            -e MINIO_ROOT_USER=ci -e MINIO_ROOT_PASSWORD=ci-only-password "$MINIO_IMAGE" server /data
+            -e MINIO_ROOT_USER=ci-user -e MINIO_ROOT_PASSWORD=ci-only-password "$MINIO_IMAGE" server /data
           for i in $(seq 1 30); do curl -sf http://127.0.0.1:9000/minio/health/live && exit 0; sleep 2; done
           docker logs minio; exit 1
       - uses: astral-sh/setup-uv@v6
@@ -152,7 +152,7 @@ jobs:
       - name: Seed, back up, destroy, restore, verify
         env:
           PGPASSWORD: ci-only-password
-          AWS_ACCESS_KEY_ID: ci
+          AWS_ACCESS_KEY_ID: ci-user
           AWS_SECRET_ACCESS_KEY: ci-only-password
         run: PATH="$PWD/.venv/bin:$PATH" ./scripts/restore_drill.sh
 
