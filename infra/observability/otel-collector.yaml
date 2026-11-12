@@ -1,0 +1,33 @@
+# API and workers export spans over OTLP/HTTP; trace context crosses the queue in Celery
+# message headers, so one trace covers request -> enqueue -> worker execution.
+receivers:
+  otlp:
+    protocols:
+      http:
+        endpoint: 0.0.0.0:4318
+
+processors:
+  memory_limiter:
+    check_interval: 1s
+    limit_mib: 400
+  batch: {}
+  # Defense in depth: drop attributes that could carry secrets if instrumentation ever records them.
+  attributes/scrub:
+    actions:
+      - key: http.request.header.authorization
+        action: delete
+      - key: db.statement
+        action: hash
+
+exporters:
+  otlp/jaeger:
+    endpoint: jaeger:4317
+    tls:
+      insecure: true
+
+service:
+  pipelines:
+    traces:
+      receivers: [otlp]
+      processors: [memory_limiter, attributes/scrub, batch]
+      exporters: [otlp/jaeger]
