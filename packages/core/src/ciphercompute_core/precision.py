@@ -73,14 +73,26 @@ def load_table() -> dict[str, Any]:
 PRECISION_CLASSES: Final = ("slotwise", "rotations")
 
 
-def heuristic_precision_bits(params: CKKSParams, levels_consumed: int) -> int:
-    """Conservative estimate for parameter sets that have not been calibrated.
+#: Extra bits the heuristic gives up for the first multiplication (relinearisation + rescale).
+HEURISTIC_FIRST_MULTIPLY_BITS: Final = 3
+#: Extra bits the heuristic gives up for rotation key-switching noise (measured gap: 8-9 bits).
+HEURISTIC_ROTATION_BITS: Final = 10
 
-    Fresh ciphertexts lose roughly ``log2(N) + 2`` bits of the scale to encoding noise; each
-    rescale costs about three more bits in practice. The measured table is always tighter.
+
+def heuristic_precision_bits(params: CKKSParams, levels_consumed: int, precision_class: str = "rotations") -> int:
+    """Conservative estimate for parameter sets that have not been calibrated (e.g. N=32768).
+
+    Fresh ciphertexts lose roughly ``log2(N) + 2`` bits of the scale to encoding noise, the same
+    calibration margin as measured sets is applied, the first multiplication costs a few more bits
+    and each rescale about three. Rotating operations lose a further ~10 bits to key switching.
+    ``test_heuristic_never_exceeds_measurements`` holds this at or below every calibrated value.
     """
-    bits = params.scale_bits - math.ceil(math.log2(params.poly_modulus_degree)) - 2 - 3 * levels_consumed
-    return max(1, bits)
+    fresh = params.scale_bits - math.ceil(math.log2(params.poly_modulus_degree)) - 2 - CALIBRATION_MARGIN_BITS
+    if precision_class == "rotations":
+        bits = fresh - HEURISTIC_ROTATION_BITS - 3 * levels_consumed
+    else:
+        bits = fresh - (HEURISTIC_FIRST_MULTIPLY_BITS + 3 * levels_consumed if levels_consumed else 0)
+    return max(0, bits)
 
 
 def magnitude_class(inputs: Sequence[Any], args: Mapping[str, Any], expected: Any) -> float:
@@ -120,10 +132,10 @@ def precision_bits(params: CKKSParams, levels_consumed: int, precision_class: st
         raise ValueError(f"levels_consumed must be within 0..{params.depth}; got {levels_consumed}")
     entry = load_table().get(table_key(params))
     if entry is None:
-        return heuristic_precision_bits(params, levels_consumed), False
+        return heuristic_precision_bits(params, levels_consumed, precision_class), False
     worst = entry["worst_normalized_error"].get(precision_class) or {}
     if not worst:
-        return heuristic_precision_bits(params, levels_consumed), False
+        return heuristic_precision_bits(params, levels_consumed, precision_class), False
     measured_levels = sorted(int(k) for k in worst)
     deepest = measured_levels[-1]
     if levels_consumed > deepest:

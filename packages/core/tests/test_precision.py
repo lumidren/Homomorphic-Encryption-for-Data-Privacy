@@ -48,10 +48,24 @@ def test_measured_bits_are_used_for_presets() -> None:
 
 def test_heuristic_for_custom_params() -> None:
     custom = CKKSParams(8192, (60, 40, 40, 60), 39)
+    fresh = 39 - 13 - 2 - 4  # scale - log2(N) - encoding noise - calibration margin
     bits, measured = precision_bits(custom, 0)
-    assert not measured and bits == heuristic_precision_bits(custom, 0) == 39 - 13 - 2
-    assert heuristic_precision_bits(custom, 2) == bits - 6
-    assert heuristic_precision_bits(CKKSParams(8192, (30, 20, 20, 20, 30), 20), 3) == 1
+    assert not measured and bits == heuristic_precision_bits(custom, 0) == fresh - 10
+    assert precision_bits(custom, 0, "slotwise") == (fresh, False)
+    assert heuristic_precision_bits(custom, 2, "slotwise") == fresh - 3 - 6
+    assert heuristic_precision_bits(custom, 2, "rotations") == fresh - 10 - 6
+    # no usable precision is reported as 0, never rounded up
+    assert heuristic_precision_bits(CKKSParams(8192, (30, 20, 20, 20, 30), 20), 3, "slotwise") == 0
+
+
+def test_heuristic_never_exceeds_measurements() -> None:
+    # The fallback for uncalibrated sets (N=32768) must be at least as pessimistic as every
+    # calibrated measurement, at every level and for both classes.
+    for params in calibrated_params():
+        for level in range(params.depth + 1):
+            for cls in ("slotwise", "rotations"):
+                measured, _ = precision_bits(params, level, cls)
+                assert heuristic_precision_bits(params, level, cls) <= measured, (params.describe(), level, cls)
 
 
 def test_extrapolation_beyond_calibrated_levels(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -62,7 +76,7 @@ def test_extrapolation_beyond_calibrated_levels(monkeypatch: pytest.MonkeyPatch)
     bits, measured = precision_bits(P, 2)
     assert (bits, measured) == (23, False)
     # a class with no measurements falls back to the heuristic
-    assert precision_bits(P, 0, "slotwise") == (heuristic_precision_bits(P, 0), False)
+    assert precision_bits(P, 0, "slotwise") == (heuristic_precision_bits(P, 0, "slotwise"), False)
 
 
 def test_bits_never_increase_with_depth_and_gaps_are_bounded(monkeypatch: pytest.MonkeyPatch) -> None:
