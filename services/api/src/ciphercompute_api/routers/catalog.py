@@ -7,7 +7,7 @@ from typing import Any
 from fastapi import APIRouter, Depends
 
 from ciphercompute_core import advise, all_presets, list_operations
-from ciphercompute_core.precision import precision_bits
+from ciphercompute_core.precision import PRECISION_CLASSES, precision_bits
 from ciphercompute_core.sigmoid import SIGMOID_DOMAIN, SIGMOID_MAX_ABS_ERROR
 
 from ..deps import Principal, get_principal
@@ -42,7 +42,8 @@ async def parameter_sets(_: Principal = Depends(get_principal)) -> list[dict[str
                 "slots": params.slots,
                 "integer_headroom_bits": params.integer_headroom_bits,
                 "precision_bits_by_level": {
-                    str(lvl): precision_bits(params, lvl)[0] for lvl in range(params.depth + 1)
+                    cls: {str(lvl): precision_bits(params, lvl, cls)[0] for lvl in range(params.depth + 1)}
+                    for cls in PRECISION_CLASSES
                 },
                 "precision_measured": precision_bits(params, 0)[1],
             }

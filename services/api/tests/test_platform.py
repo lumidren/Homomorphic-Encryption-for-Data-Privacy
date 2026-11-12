@@ -152,7 +152,8 @@ async def test_catalog_and_advisor(h: Harness) -> None:
     assert (
         first["poly_modulus_degree"] == 8192
         and first["precision_measured"]
-        and set(first["precision_bits_by_level"]) == {"0", "1", "2"}
+        and set(first["precision_bits_by_level"]) == {"slotwise", "rotations"}
+        and set(first["precision_bits_by_level"]["rotations"]) == {"0", "1", "2"}
     )
     advice = await h.client.post(
         "/v1/advisor",
