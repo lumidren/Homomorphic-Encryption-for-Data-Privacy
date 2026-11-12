@@ -25,7 +25,7 @@ HEAVY = [f"N32768-{level}-{profile}" for level in (128, 192, 256) for profile in
 
 def run(argv: list[str]) -> int:
     print("$", " ".join(argv), flush=True)
-    return subprocess.run(argv, cwd=HERE, check=False).returncode  # noqa: S603 - fixed argv
+    return subprocess.run(argv, cwd=HERE, check=False).returncode
 
 
 def main() -> int:
@@ -40,8 +40,21 @@ def main() -> int:
         groups += HEAVY
     failures = []
     for expr in groups:
-        argv = [python, "-m", "pytest", "-q", "-p", "no:cacheprovider", "-k", expr,
-                "--cov=ciphercompute_core", "--cov-append", "--cov-report=", "--cov-fail-under=0", *ns.pytest_args]
+        argv = [
+            python,
+            "-m",
+            "pytest",
+            "-q",
+            "-p",
+            "no:cacheprovider",
+            "-k",
+            expr,
+            "--cov=ciphercompute_core",
+            "--cov-append",
+            "--cov-report=",
+            "--cov-fail-under=0",
+            *ns.pytest_args,
+        ]
         if ns.heavy and expr in HEAVY:
             argv += ["-m", "heavy"]
         code = run(argv)
