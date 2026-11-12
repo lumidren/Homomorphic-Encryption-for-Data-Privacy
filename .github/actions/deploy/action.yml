@@ -1,0 +1,49 @@
+name: Deploy CipherCompute
+description: Helm upgrade with automatic rollback on failed rollout or failed health checks.
+
+inputs:
+  environment: { required: true, description: "staging or prod" }
+  tag: { required: true, description: "image tag (sha-<12 hex>)" }
+  role-arn: { required: true, description: "AWS role assumed via OIDC" }
+  cluster: { required: true, description: "EKS cluster name" }
+  api-url: { required: true, description: "public API base URL for smoke checks" }
+  region: { required: false, default: us-east-1, description: "AWS region" }
+
+runs:
+  using: composite
+  steps:
+    - uses: aws-actions/configure-aws-credentials@v4
+      with:
+        role-to-assume: ${{ inputs.role-arn }}
+        aws-region: ${{ inputs.region }}
+    - uses: azure/setup-helm@v4
+      with: { version: v3.18.4 }
+    - shell: bash
+      run: aws eks update-kubeconfig --name "${{ inputs.cluster }}" --region "${{ inputs.region }}"
+    - name: helm upgrade --atomic (rolls back by itself if the rollout fails)
+      shell: bash
+      run: |
+        helm upgrade --install ciphercompute infra/helm/ciphercompute \
+          --namespace ciphercompute --create-namespace \
+          -f "infra/helm/ciphercompute/values-${{ inputs.environment }}.yaml" \
+          --set image.python.tag="${{ inputs.tag }}" --set image.dashboard.tag="${{ inputs.tag }}" \
+          --atomic --wait --timeout 15m --history-max 10
+    - name: Post-deploy health checks (roll back on failure)
+      shell: bash
+      run: |
+        set -u
+        ok=0
+        for i in $(seq 1 20); do
+          if curl -fsS "${{ inputs.api-url }}/healthz" >/dev/null && curl -fsS "${{ inputs.api-url }}/readyz" >/dev/null; then
+            ok=$((ok + 1))
+            [ "$ok" -ge 5 ] && break
+          else
+            ok=0
+          fi
+          sleep 6
+        done
+        if [ "$ok" -lt 5 ]; then
+          echo "::error::health checks failed after deploy; rolling back"
+          helm rollback ciphercompute 0 --namespace ciphercompute --wait --timeout 10m
+          exit 1
+        fi

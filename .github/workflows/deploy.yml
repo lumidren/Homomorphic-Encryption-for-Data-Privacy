@@ -1,0 +1,54 @@
+name: Deploy
+
+# Staging deploys automatically after CI passes on main. Production requires a manual approval
+# (GitHub Environment "production" with required reviewers) and deploys the exact image digests
+# that passed staging. A failed rollout or failed post-deploy health checks roll back automatically.
+
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+    branches: [main]
+
+permissions:
+  contents: read
+  id-token: write
+
+concurrency:
+  group: deploy
+  cancel-in-progress: false
+
+jobs:
+  staging:
+    if: github.event.workflow_run.conclusion == 'success'
+    runs-on: ubuntu-latest
+    environment: staging
+    outputs:
+      tag: ${{ steps.tag.outputs.tag }}
+    steps:
+      - uses: actions/checkout@v4
+        with: { ref: "${{ github.event.workflow_run.head_sha }}" }
+      - id: tag
+        run: echo "tag=sha-$(echo '${{ github.event.workflow_run.head_sha }}' | cut -c1-12)" >> "$GITHUB_OUTPUT"
+      - uses: ./.github/actions/deploy
+        with:
+          environment: staging
+          tag: ${{ steps.tag.outputs.tag }}
+          role-arn: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          cluster: ${{ vars.EKS_CLUSTER }}
+          api-url: ${{ vars.API_URL }}
+
+  production:
+    needs: staging
+    runs-on: ubuntu-latest
+    environment: production # required reviewers = manual approval gate
+    steps:
+      - uses: actions/checkout@v4
+        with: { ref: "${{ github.event.workflow_run.head_sha }}" }
+      - uses: ./.github/actions/deploy
+        with:
+          environment: prod
+          tag: ${{ needs.staging.outputs.tag }}
+          role-arn: ${{ vars.AWS_DEPLOY_ROLE_ARN }}
+          cluster: ${{ vars.EKS_CLUSTER }}
+          api-url: ${{ vars.API_URL }}
