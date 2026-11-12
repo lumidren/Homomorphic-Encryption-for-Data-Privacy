@@ -1,0 +1,44 @@
+rules:
+  - id: no-plain-secret-compare
+    # TM:I-4 — secrets, tokens, digests and signatures are compared in constant time.
+    languages: [python]
+    severity: ERROR
+    message: Compare secrets with hmac.compare_digest, not == or != (timing side channel).
+    patterns:
+      - pattern-either:
+          - pattern: $A == $B
+          - pattern: $A != $B
+      - metavariable-regex:
+          metavariable: $A
+          regex: (?i).*(token|secret|api_key|key_hash|digest|signature|password).*
+      - pattern-not-inside: hmac.compare_digest(...)
+    paths:
+      include:
+        - services/*/src/**
+        - packages/client/src/**
+
+  - id: no-secret-key-in-server
+    # TM:I-1 — the server must never handle secret-key material.
+    languages: [python]
+    severity: ERROR
+    message: Server code must not use KeyRing, decrypt or secret-key serialization.
+    pattern-either:
+      - pattern: KeyRing
+      - pattern: $X.decrypt(...)
+      - pattern: $X.serialize(..., save_secret_key=True, ...)
+      - pattern: $X.secret_key()
+    paths:
+      include:
+        - services/*/src/**
+
+  - id: no-logging-request-bodies
+    # TM:I-3
+    languages: [python]
+    severity: ERROR
+    message: Do not log request bodies or raw tokens.
+    pattern-either:
+      - pattern: $LOG.$M(..., body=await $REQ.body(), ...)
+      - pattern: $LOG.$M(..., authorization=$REQ.headers[...], ...)
+    paths:
+      include:
+        - services/*/src/**
