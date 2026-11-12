@@ -66,7 +66,14 @@ jobs:
         env:
           CC_TEST_HEAVY: "1"
           CC_PROPERTY_EXAMPLES: "5"
-        run: ../../.venv/bin/pytest -m heavy tests/test_properties.py tests/test_depth_regression.py
+        # One process per preset: an N=32768 key bundle is ~1.1 GB and SEAL's pool never shrinks.
+        run: |
+          status=0
+          for preset in 128-balanced 128-deep 192-balanced 192-deep 256-balanced 256-deep; do
+            ../../.venv/bin/pytest -q -p no:cacheprovider -m heavy -k "N32768-${preset}" \
+              tests/test_properties.py tests/test_depth_regression.py || status=1
+          done
+          exit $status
 
   test-services:
     name: API, worker and SDK (>= 90% coverage)
