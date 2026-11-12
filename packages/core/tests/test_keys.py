@@ -149,3 +149,12 @@ def test_keyring_requires_private_context(small_bundle: PublicKeyBundle) -> None
 
 def test_fingerprint_bytes_is_sha256() -> None:
     assert fingerprint_bytes(b"") == "sha256:e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+
+
+def test_secret_envelope_missing_evaluation_keys(small_ring: KeyRing) -> None:
+    raw = small_ring.context().serialize(
+        save_public_key=True, save_secret_key=True, save_galois_keys=False, save_relin_keys=True
+    )
+    header = _header(small_ring, kind=SECRET_KIND)
+    with pytest.raises(SerializationError, match="missing evaluation keys"):
+        KeyRing.from_secret_bytes(pack(MAGIC_SECRET, header, raw))

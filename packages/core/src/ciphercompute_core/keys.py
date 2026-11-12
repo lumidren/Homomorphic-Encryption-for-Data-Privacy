@@ -195,9 +195,7 @@ class KeyRing:
             coeff_mod_bit_sizes=list(params.coeff_mod_bit_sizes),
         )
         ctx.global_scale = params.scale
-        ctx.generate_galois_keys()
-        if not ctx.has_relin_keys():
-            ctx.generate_relin_keys()
+        ctx.generate_galois_keys()  # relinearization keys are generated with the context
         return cls(ctx, params, _new_ring_id())
 
     @property
@@ -254,11 +252,10 @@ class KeyRing:
         if not ctx.is_private():
             raise SerializationError("secret ring envelope does not contain a secret key")
         _check_context_matches(ctx, params)
-        # Evaluation keys are derived from the secret key and may be regenerated after a reload.
-        if not ctx.has_galois_keys():
-            ctx.generate_galois_keys()
-        if not ctx.has_relin_keys():
-            ctx.generate_relin_keys()
+        # to_secret_bytes() always serializes the evaluation keys; a hand-made envelope without
+        # them is rejected rather than silently regenerated.
+        if not (ctx.has_galois_keys() and ctx.has_relin_keys()):
+            raise SerializationError("secret ring envelope is missing evaluation keys")
         return cls(ctx, params, ring_id)
 
     def __repr__(self) -> str:
