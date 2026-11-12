@@ -3,8 +3,9 @@
 
 For each preset: key generation time, public-bundle and ciphertext sizes, encryption and
 decryption time for a full vector of slots, latency of every operation (median of ``--repeat``
-runs), and the measured precision bits from the calibration table. Results go to
-``benchmarks/results/<host>.json`` and a Markdown table the whitepaper includes.
+runs), and the measured precision bits for that operation's class from the calibration table.
+Each preset runs in its own process (SEAL's memory pool never shrinks). Results go to
+``benchmarks/results/results.json`` and a Markdown table the whitepaper includes.
 
     python benchmarks/benchmark.py                 # N=8192 and N=16384
     python benchmarks/benchmark.py --heavy         # adds N=32768 (several GB of RAM)
@@ -17,6 +18,7 @@ import json
 import os
 import platform
 import statistics
+import subprocess
 import sys
 import time
 from pathlib import Path
@@ -27,6 +29,7 @@ import tenseal
 
 from ciphercompute_core import EncryptedVector, KeyRing, all_presets, apply_operation, plan
 from ciphercompute_core.errors import DepthExhaustedError
+from ciphercompute_core.ops import get_operation
 from ciphercompute_core.precision import precision_bits
 
 ROOT = Path(__file__).resolve().parent
@@ -125,7 +128,8 @@ def bench(profile: str, params, repeat: int, rng: np.random.Generator) -> dict[s
         ops[label] = {
             "seconds": round(seconds, 5),
             "levels_consumed": out.levels_consumed,
-            "precision_bits": precision_bits(params, out.levels_consumed)[0],
+            "precision_class": get_operation(name).precision_class(args),
+            "precision_bits": precision_bits(params, out.levels_consumed, get_operation(name).precision_class(args))[0],
         }
     result = {
         "profile": profile,
@@ -150,7 +154,8 @@ def bench(profile: str, params, repeat: int, rng: np.random.Generator) -> dict[s
 def markdown(results: list[dict[str, Any]], host: dict[str, Any]) -> str:
     lines = [
         f"Measured on {host['cpu']} ({host['logical_cpus']} logical CPUs, {host.get('ram_gb', '?')} GB RAM), "
-        f"{host['os']}, Python {host['python']}, TenSEAL {host['tenseal']}; single-threaded, median of repeated runs.",
+        f"{host['os']}, Python {host['python']}, TenSEAL {host['tenseal']}; one process per parameter set, "
+        "median of repeated runs.",
         "",
         "| N | security | profile | depth | slots | keygen | public bundle | ciphertext | encrypt | decrypt | fresh precision |",
         "|---|---|---|---|---|---|---|---|---|---|---|",
@@ -185,12 +190,26 @@ def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     parser.add_argument("--heavy", action="store_true")
     parser.add_argument("--repeat", type=int, default=5)
+    parser.add_argument("--only", type=int, help=argparse.SUPPRESS)  # internal: one preset, JSON on stdout
     ns = parser.parse_args()
-    rng = np.random.default_rng(7)
+    presets = [(profile, p) for profile, p in all_presets() if ns.heavy or p.poly_modulus_degree != 32768]
+    if ns.only is not None:
+        profile, params = presets[ns.only]
+        result = bench(profile, params, ns.repeat, np.random.default_rng(7 + ns.only))
+        print("RESULT " + json.dumps(result), flush=True)
+        return 0
     host = machine()
-    results = [
-        bench(profile, p, ns.repeat, rng) for profile, p in all_presets() if ns.heavy or p.poly_modulus_degree != 32768
-    ]
+    results = []
+    for index in range(len(presets)):
+        argv = [sys.executable, __file__, "--only", str(index), "--repeat", str(ns.repeat)]
+        if ns.heavy:
+            argv.append("--heavy")
+        proc = subprocess.run(argv, stdout=subprocess.PIPE, text=True, check=True)  # noqa: S603 - own script
+        for line in proc.stdout.splitlines():
+            if line.startswith("RESULT "):
+                results.append(json.loads(line[len("RESULT ") :]))
+            else:
+                print(line, flush=True)
     out_dir = ROOT / "results"
     out_dir.mkdir(exist_ok=True)
     (out_dir / "results.json").write_text(
