@@ -35,7 +35,7 @@ _BUNDLE_BODY = {
         "content": {
             "application/octet-stream": {
                 "schema": {"type": "string", "format": "binary"},
-                "example": "<bytes of KeyRing.public_bundle().to_bytes()>",
+                "example": "<serialized public key bundle (CCPK envelope) produced by the client SDK>",
             }
         },
     }
