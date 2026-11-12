@@ -28,9 +28,13 @@ Requires **64-bit Python 3.12** (TenSEAL ships no 32-bit wheels) and [uv](https:
 ```bash
 git clone https://github.com/lumidren/Homomorphic-Encryption-for-Data-Privacy
 cd Homomorphic-Encryption-for-Data-Privacy
-uv venv .venv --python 3.12
-uv pip install --python .venv -e packages/core -e packages/client -e services/api -e services/worker "moto[server]" fakeredis
+uv venv .venv --python 3.12      # Windows: --python cpython-3.12-windows-x86_64-none (see below)
+uv pip install --python .venv -e packages/core -e packages/client -e services/api -e services/worker "moto[server]" fakeredis aiosqlite
 ```
+
+On Windows, `--python 3.12` can resolve to a 32-bit interpreter (an old python.org install on
+`PATH`, or a 32-bit build of uv itself), and pip then tries to compile TenSEAL from source and
+fails. Naming the 64-bit build explicitly avoids that.
 
 **Terminal 1** — the whole backend in one process (real API and worker; SQLite, fakeredis and a
 local S3 server stand in for PostgreSQL, Redis and S3):
