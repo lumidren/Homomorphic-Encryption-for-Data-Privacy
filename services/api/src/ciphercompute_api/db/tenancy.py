@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import uuid
 from collections.abc import Sequence
-from typing import Any, TypeVar, cast
+from typing import Any, TypeVar
 
 from sqlalchemy import Select, func, select
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -44,12 +44,11 @@ class TenantScopedSession:
     def select(self, model: type[T]) -> Select[tuple[T]]:
         if not issubclass(model, TenantScoped):
             raise TenantViolationError(f"{model.__name__} is not a tenant-scoped model")
-        stmt = select(model).where(model.organization_id == self._organization_id)
-        return cast("Select[tuple[T]]", stmt)
+        return select(model).where(model.organization_id == self._organization_id)
 
     async def get(self, model: type[T], row_id: uuid.UUID) -> T | None:
         stmt = self.select(model).where(model.id == row_id)  # type: ignore[attr-defined]
-        return cast("T | None", (await self._session.execute(stmt)).scalars().one_or_none())
+        return (await self._session.execute(stmt)).scalars().one_or_none()
 
     async def get_or_404(self, model: type[T], row_id: uuid.UUID, what: str | None = None) -> T:
         row = await self.get(model, row_id)
@@ -58,10 +57,10 @@ class TenantScopedSession:
         return row
 
     async def scalars(self, stmt: Select[tuple[T]]) -> Sequence[T]:
-        return cast("Sequence[T]", (await self._session.execute(stmt)).scalars().all())
+        return (await self._session.execute(stmt)).scalars().all()
 
     async def scalar_one_or_none(self, stmt: Select[tuple[T]]) -> T | None:
-        return cast("T | None", (await self._session.execute(stmt)).scalars().one_or_none())
+        return (await self._session.execute(stmt)).scalars().one_or_none()
 
     async def count(self, stmt: Select[tuple[T]]) -> int:
         return int((await self._session.execute(select(func.count()).select_from(stmt.subquery()))).scalar_one())

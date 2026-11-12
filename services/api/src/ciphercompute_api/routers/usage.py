@@ -25,15 +25,14 @@ async def usage(
     org = principal.organization_id
     since = utcnow() - timedelta(days=days)
 
-    by_status = dict(
-        (
-            await session.execute(
-                select(Job.status, func.count())
-                .where(Job.organization_id == org, Job.created_at >= since)
-                .group_by(Job.status)
-            )
-        ).all()
-    )
+    status_rows = (
+        await session.execute(
+            select(Job.status, func.count())
+            .where(Job.organization_id == org, Job.created_at >= since)
+            .group_by(Job.status)
+        )
+    ).all()
+    by_status = {status: int(count) for status, count in status_rows}
     by_operation = (
         await session.execute(
             select(Job.operation, func.count(), func.coalesce(func.sum(Job.compute_seconds), 0.0))
